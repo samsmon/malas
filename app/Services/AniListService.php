@@ -161,31 +161,53 @@ class AniListService
         return self::MEDIA_FIELDS;
     }
 
+    /**
+     * Retry koneksi (timeout/DNS) pakai backoff singkat, tapi khusus HTTP 429 nunggu sesuai
+     * header `Retry-After` dari AniList (bukan skip/gagal) — biar batch import besar tetap
+     * tuntas semua tanpa ada item yang ke-skip gara-gara rate limit sementara.
+     */
     private function request(string $query, array $variables = []): array
     {
-        try {
-            $response = Http::timeout(15)->retry(2, 1000)->post(self::BASE_URL, [
-                'query' => $query,
-                'variables' => $variables,
-            ]);
-        } catch (ConnectionException) {
-            throw new \Exception('Tidak dapat terhubung ke AniList API. Periksa koneksi internet.');
-        } catch (RequestException $e) {
-            throw new \Exception($this->friendlyError($e->response->status()));
+        $maxAttempts = 6;
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $response = Http::timeout(15)->post(self::BASE_URL, [
+                    'query' => $query,
+                    'variables' => $variables,
+                ]);
+            } catch (ConnectionException) {
+                if ($attempt === $maxAttempts) {
+                    throw new \Exception('Tidak dapat terhubung ke AniList API. Periksa koneksi internet.');
+                }
+                sleep(2);
+                continue;
+            }
+
+            if ($response->status() === 429) {
+                if ($attempt === $maxAttempts) {
+                    throw new \Exception('Masih kena rate limit AniList setelah beberapa kali percobaan.');
+                }
+                $retryAfter = (int) ($response->header('Retry-After') ?: 5);
+                sleep(max($retryAfter, 1));
+                continue;
+            }
+
+            if (! $response->successful()) {
+                throw new \Exception($this->friendlyError($response->status()));
+            }
+
+            $json = $response->json();
+
+            if (! empty($json['errors'])) {
+                $message = $json['errors'][0]['message'] ?? 'Unknown error';
+                throw new \Exception("AniList API error: {$message}");
+            }
+
+            return $json['data'] ?? [];
         }
 
-        if (! $response->successful()) {
-            throw new \Exception($this->friendlyError($response->status()));
-        }
-
-        $json = $response->json();
-
-        if (! empty($json['errors'])) {
-            $message = $json['errors'][0]['message'] ?? 'Unknown error';
-            throw new \Exception("AniList API error: {$message}");
-        }
-
-        return $json['data'] ?? [];
+        throw new \Exception('Gagal mengambil data dari AniList setelah beberapa kali percobaan.');
     }
 
     private function friendlyError(int $status): string
