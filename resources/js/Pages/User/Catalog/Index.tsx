@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { RefreshCw } from 'lucide-react';
 import UserLayout from '@/Layouts/UserLayout';
 import PageHeader from '@/Components/app/PageHeader';
-import { SeriesCard } from '@/Components/app/SeriesCard';
+import { SeriesCard, SeriesCardSkeleton } from '@/Components/app/SeriesCard';
 import { Pagination } from '@/Components/app/Pagination';
 import { GenreMultiSelect } from '@/Components/app/GenreMultiSelect';
 import { Button } from '@/Components/ui/button';
@@ -66,7 +66,18 @@ export default function CatalogIndex({ series, collectionSeriesIds, genreOptions
     const tagGroups = Object.entries(tagOptions).map(([category, tags]) => ({ category, tags }));
     const [search, setSearch]         = useState(filters.search ?? '');
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading]       = useState(false);
     const isFirstRender = useRef(true);
+
+    useEffect(() => {
+        const removeStart = router.on('start', () => setLoading(true));
+        const removeFinish = router.on('finish', () => setLoading(false));
+
+        return () => {
+            removeStart();
+            removeFinish();
+        };
+    }, []);
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -193,7 +204,13 @@ export default function CatalogIndex({ series, collectionSeriesIds, genreOptions
             </div>
 
             {/* Grid */}
-            {series.data.length === 0 ? (
+            {loading ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                    {Array.from({ length: 12 }).map((_, idx) => (
+                        <SeriesCardSkeleton key={idx} />
+                    ))}
+                </div>
+            ) : series.data.length === 0 ? (
                 <div className="py-20 text-center">
                     <p className="text-muted-foreground">{t('empty.title')}</p>
                     {filters.search && (
