@@ -27,3 +27,4 @@ bootstrap/cache/*.php
 database/database.sqlite
 graphify-out
 deploy
+!deploy/docker-entrypoint.sh

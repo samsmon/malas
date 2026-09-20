@@ -58,10 +58,17 @@ COPY --from=frontend /app/public/build ./public/build
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 
+# Baked at a path a volume mount never shadows -- entrypoint copies this into the
+# shared public_build volume on every boot, so nginx (which only mounts that volume,
+# not the whole image) always serves assets matching this exact build's hashes.
+COPY --from=frontend /app/public/build /opt/public-build-src
+
 RUN addgroup -g 1000 malas && adduser -G malas -u 1000 -D malas \
     && chown -R malas:malas /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public
 
 USER malas
 
 EXPOSE 9000
+COPY --chown=malas:malas deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]
