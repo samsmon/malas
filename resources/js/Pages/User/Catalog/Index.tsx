@@ -9,9 +9,6 @@ import { Pagination } from '@/Components/app/Pagination';
 import { GenreMultiSelect } from '@/Components/app/GenreMultiSelect';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/Components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/Components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { useTypeFilterOptions } from '@/lib/typeFilters';
@@ -70,7 +67,15 @@ export default function CatalogIndex({ series, collectionSeriesIds, genreOptions
     const isFirstRender = useRef(true);
 
     useEffect(() => {
-        const removeStart = router.on('start', () => setLoading(true));
+        // Skeleton hanya untuk request ke halaman katalog ini sendiri (filter, cari, paginasi).
+        // Navigasi ke halaman lain (mis. klik kartu ke detail series) tidak boleh menampilkan
+        // skeleton katalog sementara halaman tujuan masih dimuat.
+        const removeStart = router.on('start', (event) => {
+            const visit = event.detail.visit;
+            if (visit.method === 'get' && visit.url.pathname === window.location.pathname) {
+                setLoading(true);
+            }
+        });
         const removeFinish = router.on('finish', () => setLoading(false));
 
         return () => {
@@ -157,24 +162,16 @@ export default function CatalogIndex({ series, collectionSeriesIds, genreOptions
                 >
                     <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
                 </Button>
-                <Select
-                    value={filters.status ?? 'all'}
-                    onValueChange={(v) => handleFilter('status', v ?? 'all')}
+                <ToggleGroup
+                    value={[filters.status || 'all']}
+                    onValueChange={(vals) => handleFilter('status', vals[0] ?? 'all')}
+                    variant="outline"
+                    size="sm"
                 >
-                    <SelectTrigger className="w-36">
-                        <SelectValue placeholder={t('allStatus')}>
-                            {(value: string) => statusLabels[value] ?? statusLabels['all']}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">{t('allStatus')}</SelectItem>
-                        <SelectItem value="publishing">{t('common:badge.status.publishing')}</SelectItem>
-                        <SelectItem value="finished">{t('common:badge.status.finished')}</SelectItem>
-                        <SelectItem value="on_hiatus">{t('common:badge.status.on_hiatus')}</SelectItem>
-                        <SelectItem value="discontinued">{t('common:badge.status.discontinued')}</SelectItem>
-                        <SelectItem value="not_yet_published">{t('common:badge.status.not_yet_published')}</SelectItem>
-                    </SelectContent>
-                </Select>
+                    {(['all', 'publishing', 'finished', 'on_hiatus', 'discontinued', 'not_yet_published'] as const).map((st) => (
+                        <ToggleGroupItem key={st} value={st}>{statusLabels[st]}</ToggleGroupItem>
+                    ))}
+                </ToggleGroup>
                 <GenreMultiSelect
                     value={filters.genre ?? []}
                     onChange={(genres) => handleFilter('genre', genres)}
