@@ -838,13 +838,13 @@ export default function CollectionIndex({ collections }: Props) {
                         </div>
                     ) : (
                         <div className="rounded-lg border">
-                            <Table>
+                            <Table className="table-fixed">
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-12" />
+                                        <TableHead className="w-14" />
                                         <TableHead>{t('index.columnTitle')}</TableHead>
-                                        <TableHead className="w-36">{t('user:tickets.status')}</TableHead>
-                                        <TableHead>{t('index.columnGenre')}</TableHead>
+                                        <TableHead className="hidden w-32 sm:table-cell">{t('user:tickets.status')}</TableHead>
+                                        <TableHead className="hidden w-1/4 md:table-cell">{t('index.columnGenre')}</TableHead>
                                         <TableHead className="w-32 text-right">{t('index.columnVolume')}</TableHead>
                                         <TableHead className="w-12" />
                                     </TableRow>
@@ -863,7 +863,7 @@ export default function CollectionIndex({ collections }: Props) {
                                                         )}
                                                     </AdultBlurOverlay>
                                                 </TableCell>
-                                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <TableCell className="whitespace-normal break-words" onClick={(e) => e.stopPropagation()}>
                                                     <HoverCard>
                                                         <HoverCardTrigger
                                                             render={<Link href={route('collection.show', c.slug)} className="font-medium hover:underline" />}
@@ -889,8 +889,8 @@ export default function CollectionIndex({ collections }: Props) {
                                                         <p className="text-xs text-muted-foreground">{c.title_english}</p>
                                                     )}
                                                 </TableCell>
-                                                <TableCell><SeriesStatusBadge status={c.status} /></TableCell>
-                                                <TableCell><GenreBadges genres={c.genres} /></TableCell>
+                                                <TableCell className="hidden sm:table-cell"><SeriesStatusBadge status={c.status} /></TableCell>
+                                                <TableCell className="hidden whitespace-normal md:table-cell"><GenreBadges genres={c.genres} /></TableCell>
                                                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                     <p>{c.collection_volumes_count}{c.total_volumes ? `/${c.total_volumes}` : ''}</p>
                                                     {c.missing_volumes.length > 0 && (
