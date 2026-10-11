@@ -42,7 +42,7 @@ interface SeriesRow {
 
 interface Props extends PageProps {
     series: PaginatedData<SeriesRow>;
-    filters: { search?: string | null; status?: string | null; type?: string | null };
+    filters: { search?: string | null; status?: string | null; type?: string | null; per_page?: string | null };
 }
 
 export default function SeriesIndex({ series, filters }: Props) {
@@ -103,6 +103,7 @@ export default function SeriesIndex({ series, filters }: Props) {
         if (!deleteTarget) return;
         setDeleting(true);
         router.delete(route('admin.series.destroy', deleteTarget.id), {
+            preserveScroll: true,
             onFinish: () => { setDeleting(false); setDeleteTarget(null); },
         });
     }
@@ -133,6 +134,7 @@ export default function SeriesIndex({ series, filters }: Props) {
         setBulkDeleting(true);
         router.delete(route('admin.series.bulk-destroy'), {
             data: { ids: Array.from(selectedIds) },
+            preserveScroll: true,
             onSuccess: () => setSelectedIds(new Set()),
             onFinish: () => { setBulkDeleting(false); setBulkDeleteOpen(false); },
         });
@@ -251,18 +253,18 @@ export default function SeriesIndex({ series, filters }: Props) {
                                 render={
                                     <div
                                         className={cn(
-                                            'relative flex cursor-pointer gap-3 rounded-xl border bg-card p-3 transition-colors hover:bg-muted/40',
+                                            'relative flex min-h-56 cursor-pointer overflow-hidden rounded-xl border bg-card transition-colors hover:bg-muted/40 sm:min-h-64',
                                             selectedIds.has(s.id) && 'border-primary ring-1 ring-primary',
                                         )}
                                     />
                                 }
                             >
                                 {s.cover_url ? (
-                                    <img src={s.cover_url} alt={s.title_romaji} className="h-36 w-24 shrink-0 rounded-md object-cover" />
+                                    <img src={s.cover_url} alt={s.title_romaji} className="w-36 shrink-0 self-stretch object-cover sm:w-44" />
                                 ) : (
-                                    <div className="h-36 w-24 shrink-0 rounded-md bg-muted" />
+                                    <div className="w-36 shrink-0 self-stretch bg-muted sm:w-44" />
                                 )}
-                                <div className="flex min-w-0 flex-1 flex-col">
+                                <div className="flex min-w-0 flex-1 flex-col p-4">
                                     <div className="absolute right-3 top-3" onClick={(e) => e.stopPropagation()}>
                                         <Checkbox
                                             checked={selectedIds.has(s.id)}

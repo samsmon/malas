@@ -22,14 +22,12 @@ class SeriesController extends Controller
 {
     public function __construct(private StorageSettingsService $storage) {}
 
-    public function index(): Response
+    public function index(): Response|RedirectResponse
     {
         $this->authorize('viewAny', Series::class);
 
         $series = Series::query()
-            ->when(request('search'), fn ($q, $s) => $q->where(fn ($sub) => $sub->where('title_romaji', 'like', "%{$s}%")
-                ->orWhere('title_english', 'like', "%{$s}%")
-            ))
+            ->when(request('search'), fn ($q, $s) => $q->searchTitle($s))
             ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
             ->when(request('type'), fn ($q, $t) => $q->where('type', $t))
             ->withCount('volumes')
@@ -50,9 +48,13 @@ class SeriesController extends Controller
                 'score' => $s->score,
             ]);
 
+        if ($series->isEmpty() && $series->currentPage() > 1) {
+            return redirect()->route('admin.series.index', [...request()->except('page'), 'page' => $series->lastPage()]);
+        }
+
         return Inertia::render('Admin/Series/Index', [
             'series' => $series,
-            'filters' => request()->only(['search', 'status', 'type']),
+            'filters' => request()->only(['search', 'status', 'type', 'per_page']),
         ]);
     }
 
@@ -224,7 +226,7 @@ class SeriesController extends Controller
         ActivityLog::record('series.delete', "Menghapus series \"{$series->title_romaji}\".", $series);
         $series->delete();
 
-        return redirect()->route('admin.series.index')->with([
+        return $this->indexRedirect()->with([
             'success' => __('flash.series.deleted'),
             'undo_url' => route('admin.series.restore', $id),
         ]);
@@ -248,7 +250,7 @@ class SeriesController extends Controller
         ActivityLog::record('series.bulk_delete', "Menghapus {$count} series sekaligus: {$titles}.");
         Series::whereIn('id', $request->ids)->delete();
 
-        return redirect()->route('admin.series.index')->with([
+        return $this->indexRedirect()->with([
             'success' => __('flash.series.bulk_deleted', ['count' => $count]),
             'undo_url' => route('admin.series.restore-bulk'),
             'undo_payload' => ['ids' => $request->ids],
@@ -284,6 +286,20 @@ class SeriesController extends Controller
         ActivityLog::record('series.bulk_restore', "Memulihkan {$series->count()} series sekaligus.");
 
         return redirect()->back()->with('success', __('flash.series.bulk_restored', ['count' => $series->count()]));
+    }
+
+    /**
+     * Setelah hapus: kembali ke daftar yang sedang dibuka admin (halaman, pencarian, dan filter
+     * tetap), bukan ke halaman 1. Kalau hapus dilakukan dari halaman lain (mis. detail series),
+     * ke daftar biasa. Hanya URL daftar series sendiri yang diterima dari Referer.
+     */
+    private function indexRedirect(): RedirectResponse
+    {
+        $index = route('admin.series.index');
+        $previous = url()->previous();
+        $stay = $previous === $index || str_starts_with($previous, $index.'?');
+
+        return redirect($stay ? $previous : $index);
     }
 
     private function storeCover(?UploadedFile $file): ?string
