@@ -4,18 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { Plus, MoreHorizontal, Pencil, RefreshCw, Trash2, Eye, ExternalLink } from 'lucide-react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import PageHeader from '@/Components/app/PageHeader';
-import { Pagination } from '@/Components/app/Pagination';
+import { AdminPagination } from '@/Components/app/AdminPagination';
 import { SeriesStatusBadge, SeriesTypeBadge } from '@/Components/app/StatusBadge';
 import { Button, buttonVariants } from '@/Components/ui/button';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Input } from '@/Components/ui/input';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/Components/ui/hover-card';
 import {
     ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger,
 } from '@/Components/ui/context-menu';
-import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/Components/ui/table';
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/Components/ui/dropdown-menu';
@@ -230,148 +226,141 @@ export default function SeriesIndex({ series, filters }: Props) {
                 </ToggleGroup>
             </div>
 
-            {/* Table */}
-            <div className="rounded-lg border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-10">
-                                <Checkbox
-                                    checked={allSelected}
-                                    indeterminate={someSelected}
-                                    onCheckedChange={toggleAll}
-                                    aria-label={t('series.index.selectAll')}
-                                />
-                            </TableHead>
-                            <TableHead className="w-12" />
-                            <TableHead>{t('series.index.table.title')}</TableHead>
-                            <TableHead className="w-28">{t('series.index.table.type')}</TableHead>
-                            <TableHead className="w-36">{t('series.index.table.status')}</TableHead>
-                            <TableHead className="w-20 text-right">{t('series.index.table.volume')}</TableHead>
-                            <TableHead className="w-20 text-right">{t('series.index.table.score')}</TableHead>
-                            <TableHead className="w-12" />
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {series.data.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
-                                    {t('series.index.empty')}
-                                </TableCell>
-                            </TableRow>
-                        ) : series.data.map((s) => (
-                            <ContextMenu key={s.id}>
-                                <ContextMenuTrigger
-                                    onClick={() => router.visit(route('admin.series.show', s.slug))}
-                                    render={<TableRow className={cn('cursor-pointer', selectedIds.has(s.id) && 'bg-muted/50')} />}
-                                >
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
+            {/* Select all */}
+            <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label={t('series.index.selectAll')}
+                />
+                <span>{t('series.index.selectAll')}</span>
+            </div>
+
+            {/* Cards */}
+            {series.data.length === 0 ? (
+                <div className="rounded-lg border py-12 text-center text-muted-foreground">
+                    {t('series.index.empty')}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                    {series.data.map((s) => (
+                        <ContextMenu key={s.id}>
+                            <ContextMenuTrigger
+                                onClick={() => router.visit(route('admin.series.show', s.slug))}
+                                render={
+                                    <div
+                                        className={cn(
+                                            'relative flex cursor-pointer gap-3 rounded-xl border bg-card p-3 transition-colors hover:bg-muted/40',
+                                            selectedIds.has(s.id) && 'border-primary ring-1 ring-primary',
+                                        )}
+                                    />
+                                }
+                            >
+                                {s.cover_url ? (
+                                    <img src={s.cover_url} alt={s.title_romaji} className="h-36 w-24 shrink-0 rounded-md object-cover" />
+                                ) : (
+                                    <div className="h-36 w-24 shrink-0 rounded-md bg-muted" />
+                                )}
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                    <div className="absolute right-3 top-3" onClick={(e) => e.stopPropagation()}>
                                         <Checkbox
                                             checked={selectedIds.has(s.id)}
                                             onCheckedChange={() => toggleRow(s.id)}
                                             aria-label={t('series.index.selectItem', { title: s.title_romaji })}
                                         />
-                                    </TableCell>
-                                    <TableCell className="align-middle">
-                                        {s.cover_url ? (
-                                            <img src={s.cover_url} alt={s.title_romaji} className="h-24 w-16 rounded object-cover" />
-                                        ) : (
-                                            <div className="h-24 w-16 rounded bg-muted" />
-                                        )}
-                                    </TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()} className="w-64 max-w-64 whitespace-normal align-middle">
-                                        <HoverCard>
-                                            <HoverCardTrigger
-                                                render={<Link href={route('admin.series.show', s.slug)} className="font-medium leading-snug hover:underline" />}
-                                            >
-                                                {s.title_romaji}
-                                            </HoverCardTrigger>
-                                            <HoverCardContent>
-                                                <div className="flex gap-3">
-                                                    <div className="h-24 w-16 shrink-0 overflow-hidden rounded bg-muted">
-                                                        {s.cover_url ? (
-                                                            <img src={s.cover_url} alt={s.title_romaji} className="h-full w-full object-cover" />
-                                                        ) : null}
-                                                    </div>
-                                                    <div className="min-w-0 space-y-1.5">
-                                                        <p className="font-medium leading-tight">{s.title_romaji}</p>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            <SeriesTypeBadge type={s.type} />
-                                                            <SeriesStatusBadge status={s.status} />
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {t('series.index.volumeCount', { count: `${s.volumes_count}${s.total_volumes ? `/${s.total_volumes}` : ''}` })}
-                                                            {s.score !== null ? t('series.index.scoreSuffix', { score: Number(s.score).toFixed(1) }) : ''}
-                                                        </p>
-                                                    </div>
+                                    </div>
+                                    <p className="pr-8 font-medium leading-snug">{s.title_romaji}</p>
+                                    {s.title_english && (
+                                        <p className="text-xs text-muted-foreground">{s.title_english}</p>
+                                    )}
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        <SeriesTypeBadge type={s.type} />
+                                        <SeriesStatusBadge status={s.status} />
+                                    </div>
+                                    <div className="mt-3 flex gap-6 text-sm">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">{t('series.index.table.volume')}</p>
+                                            <p className="font-medium">{s.volumes_count}{s.total_volumes ? `/${s.total_volumes}` : ''}</p>
+                                            {s.total_volumes ? (
+                                                <div className="mt-1 h-1 w-24 overflow-hidden rounded-full bg-muted">
+                                                    <div
+                                                        className="h-full bg-primary"
+                                                        style={{ width: `${Math.min(100, Math.round((s.volumes_count / s.total_volumes) * 100))}%` }}
+                                                    />
                                                 </div>
-                                            </HoverCardContent>
-                                        </HoverCard>
-                                        {s.title_english && (
-                                            <p className="text-xs text-muted-foreground">{s.title_english}</p>
-                                        )}
-                                    </TableCell>
-                                    <TableCell><SeriesTypeBadge type={s.type} /></TableCell>
-                                    <TableCell><SeriesStatusBadge status={s.status} /></TableCell>
-                                    <TableCell className="text-right">
-                                        {s.volumes_count}{s.total_volumes ? `/${s.total_volumes}` : ''}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        {s.score !== null ? Number(s.score).toFixed(1) : '—'}
-                                    </TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                            ) : null}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">{t('series.index.table.score')}</p>
+                                            <p className="font-medium">{s.score !== null ? Number(s.score).toFixed(1) : '—'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-auto flex items-center gap-1.5 pt-3" onClick={(e) => e.stopPropagation()}>
+                                        <Link
+                                            href={route('admin.series.edit', s.slug)}
+                                            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                                        >
+                                            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                            {t('common:common.edit')}
+                                        </Link>
+                                        <a
+                                            href={route('admin.series.show', s.slug)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            aria-label={t('series.index.openInNewTab')}
+                                            title={t('series.index.openInNewTab')}
+                                            className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'h-8 w-8')}
+                                        >
+                                            <ExternalLink className="h-4 w-4" />
+                                        </a>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger
-                                                className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'h-8 w-8')}
+                                                className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'ml-auto h-8 w-8')}
                                             >
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem
-                                                    onClick={() => router.visit(route('admin.series.edit', s.slug))}
-                                                >
-                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                    {t('common:common.edit')}
+                                                <DropdownMenuItem onClick={() => router.visit(route('admin.series.show', s.slug))}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    {t('series.index.view')}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem
-                                                    variant="destructive"
-                                                    onClick={() => setDeleteTarget(s)}
-                                                >
+                                                <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(s)}>
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     {t('common:common.delete')}
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-                                    </TableCell>
-                                </ContextMenuTrigger>
-                                <ContextMenuContent>
-                                    <ContextMenuItem onClick={() => router.visit(route('admin.series.show', s.slug))}>
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        {t('series.index.view')}
-                                    </ContextMenuItem>
-                                    <ContextMenuItem onClick={() => window.open(route('admin.series.show', s.slug), '_blank', 'noopener,noreferrer')}>
-                                        <ExternalLink className="mr-2 h-4 w-4" />
-                                        {t('series.index.openInNewTab')}
-                                    </ContextMenuItem>
-                                    <ContextMenuItem onClick={() => router.visit(route('admin.series.edit', s.slug))}>
-                                        <Pencil className="mr-2 h-4 w-4" />
-                                        {t('common:common.edit')}
-                                    </ContextMenuItem>
-                                    <ContextMenuSeparator />
-                                    <ContextMenuItem variant="destructive" onClick={() => setDeleteTarget(s)}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        {t('common:common.delete')}
-                                    </ContextMenuItem>
-                                </ContextMenuContent>
-                            </ContextMenu>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+                                    </div>
+                                </div>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                                <ContextMenuItem onClick={() => router.visit(route('admin.series.show', s.slug))}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    {t('series.index.view')}
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => window.open(route('admin.series.show', s.slug), '_blank', 'noopener,noreferrer')}>
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    {t('series.index.openInNewTab')}
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => router.visit(route('admin.series.edit', s.slug))}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    {t('common:common.edit')}
+                                </ContextMenuItem>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem variant="destructive" onClick={() => setDeleteTarget(s)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    {t('common:common.delete')}
+                                </ContextMenuItem>
+                            </ContextMenuContent>
+                        </ContextMenu>
+                    ))}
+                </div>
+            )}
 
             <div className="mt-4">
-                <Pagination
+                <AdminPagination
                     data={series}
                     routeName="admin.series.index"
                     filters={{ search, status: filters.status, type: filters.type }}

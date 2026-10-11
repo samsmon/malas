@@ -115,7 +115,11 @@
     "pagination": {
         "showing": "Showing {{from}}–{{to}} of {{total}}",
         "total": "Total {{total}}",
-        "perPage": "per page"
+        "perPage": "per page",
+        "nav": "Pagination",
+        "goToPage": "Go to page {{page}}",
+        "prev": "Previous",
+        "next": "Next"
     },
     "badge": {
         "status": {

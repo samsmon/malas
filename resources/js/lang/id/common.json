@@ -115,7 +115,11 @@
     "pagination": {
         "showing": "Menampilkan {{from}}–{{to}} dari {{total}}",
         "total": "Total {{total}}",
-        "perPage": "per halaman"
+        "perPage": "per halaman",
+        "nav": "Navigasi halaman",
+        "goToPage": "Ke halaman {{page}}",
+        "prev": "Sebelumnya",
+        "next": "Berikutnya"
     },
     "badge": {
         "status": {

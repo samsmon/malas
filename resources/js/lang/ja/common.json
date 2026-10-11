@@ -115,7 +115,11 @@
     "pagination": {
         "showing": "{{total}}件中 {{from}}–{{to}}件を表示",
         "total": "合計 {{total}}件",
-        "perPage": "件/ページ"
+        "perPage": "件/ページ",
+        "nav": "ページネーション",
+        "goToPage": "{{page}}ページへ移動",
+        "prev": "前へ",
+        "next": "次へ"
     },
     "badge": {
         "status": {
