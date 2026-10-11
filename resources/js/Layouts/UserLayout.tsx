@@ -13,7 +13,6 @@ import {
     Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/Components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/Components/ui/tooltip';
-import { PageTransition } from '@/Components/app/PageTransition';
 import { ThemeSwitcher } from '@/Components/app/ThemeSwitcher';
 import { AccountSwitcher } from '@/Components/app/AccountSwitcher';
 import { useFlash } from '@/hooks/useFlash';
@@ -211,7 +210,7 @@ export default function UserLayout({ children, header }: UserLayoutProps) {
                 <div ref={scrollWrapRef} className="min-h-0 flex-1">
                     <ScrollArea className="h-full">
                         <main className="p-6">
-                            <PageTransition>{children}</PageTransition>
+                            {children}
                         </main>
                     </ScrollArea>
                 </div>

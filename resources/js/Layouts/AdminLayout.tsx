@@ -16,7 +16,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/Components/ui/tooltip';
 import { ThemeSwitcher } from '@/Components/app/ThemeSwitcher';
 import { AccountSwitcher } from '@/Components/app/AccountSwitcher';
-import { PageTransition } from '@/Components/app/PageTransition';
 import { useFlash } from '@/hooks/useFlash';
 import AnnouncementBanner from '@/Components/app/AnnouncementBanner';
 import { SidebarNav } from '@/Components/app/SidebarNav';
@@ -222,7 +221,7 @@ export default function AdminLayout({ children, header }: AdminLayoutProps) {
                 <div ref={scrollWrapRef} className="min-h-0 flex-1">
                     <ScrollArea className="h-full">
                         <main className="p-6">
-                            <PageTransition>{children}</PageTransition>
+                            {children}
                         </main>
                     </ScrollArea>
                 </div>
