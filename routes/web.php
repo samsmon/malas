@@ -169,7 +169,7 @@ Route::middleware(['auth', 'not_banned', 'check.menu'])->group(function () {
 });
 
 // Admin area
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_banned', 'check.menu'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_banned', 'check.menu', 'log.admin'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/collections', [AdminCollectionController::class, 'index'])->name('collections.index');

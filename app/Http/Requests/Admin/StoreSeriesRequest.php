@@ -22,12 +22,23 @@ class StoreSeriesRequest extends FormRequest
             'synopsis' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['publishing', 'finished', 'on_hiatus', 'discontinued', 'not_yet_published'])],
             'type' => ['required', Rule::in(['manga', 'novel', 'one_shot', 'doujinshi', 'other'])],
-            'cover' => ['nullable', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+            'cover' => ['nullable', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
             'published_from' => ['nullable', 'date'],
             'published_to' => ['nullable', 'date', 'after_or_equal:published_from'],
             'total_volumes' => ['nullable', 'integer', 'min:1'],
             'score' => ['nullable', 'numeric', 'min:0', 'max:10'],
             'rank' => ['nullable', 'integer', 'min:1'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'cover.max' => 'Ukuran cover maksimal 10 MB.',
+            'cover.mimes' => 'Format cover harus JPG, PNG, atau WebP.',
+            'cover.uploaded' => 'Cover gagal diunggah. Coba file yang lebih kecil dari 10 MB.',
+            'published_to.after_or_equal' => 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.',
+            'score.max' => 'Skor maksimal 10.',
         ];
     }
 }

@@ -63,6 +63,8 @@ export default function SeriesCreate() {
         { message: t('series.create.endDateBeforeStart'), path: ['published_to'] },
     ), [t]);
 
+    const [serverErrors, setServerErrors] = useState<string[]>([]);
+
     const {
         register,
         control,
@@ -74,8 +76,13 @@ export default function SeriesCreate() {
         defaultValues: { status: 'publishing', type: 'manga' },
     });
 
+    function onInvalid(errs: Record<string, { message?: string } | undefined>) {
+        setServerErrors(Object.entries(errs).map(([k, v]) => v?.message || `${k}: tidak valid`));
+    }
+
     function onSubmit(values: FormValues) {
         setSubmitting(true);
+        setServerErrors([]);
         const fd = new FormData();
         Object.entries(values).forEach(([k, v]) => {
             if (v !== undefined && v !== '') fd.append(k, v);
@@ -88,6 +95,7 @@ export default function SeriesCreate() {
                 Object.entries(errs).forEach(([k, msg]) => {
                     setError(k as keyof FormValues, { message: msg });
                 });
+                setServerErrors(Object.values(errs));
                 setSubmitting(false);
             },
             onFinish: () => setSubmitting(false),
@@ -107,7 +115,15 @@ export default function SeriesCreate() {
             }
         >
             <Head title={t('series.create.title')} />
-            <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-5">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="max-w-2xl space-y-5">
+                {serverErrors.length > 0 && (
+                <div role="alert" className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                    <p className="mb-1 font-medium">Gagal menyimpan:</p>
+                    <ul className="list-disc space-y-0.5 pl-5">
+                        {serverErrors.map((m, i) => <li key={i}>{m}</li>)}
+                    </ul>
+                </div>
+            )}
                 <div className="space-y-1.5">
                     <Label htmlFor="title_romaji">{t('series.create.titleRomajiLabel')} <span className="text-destructive">*</span></Label>
                     <Input id="title_romaji" {...register('title_romaji')} />

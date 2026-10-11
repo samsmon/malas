@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,7 +33,8 @@ class SeriesController extends Controller
             ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
             ->when(request('type'), fn ($q, $t) => $q->where('type', $t))
             ->withCount('volumes')
-            ->latest()
+            ->orderByRaw('LOWER(title_romaji)')
+            ->orderBy('id')
             ->paginate($this->perPage())
             ->withQueryString()
             ->through(fn ($s) => [
@@ -69,7 +71,9 @@ class SeriesController extends Controller
         $data['cover_path'] = $this->storeCover($request->file('cover'));
         unset($data['cover']);
 
-        Series::create($data);
+        $series = Series::create($data);
+
+        ActivityLog::record('series.create', "Menambahkan series \"{$series->title_romaji}\".", $series);
 
         return redirect()->route('admin.series.index')
             ->with('success', __('flash.series.created'));
@@ -187,16 +191,26 @@ class SeriesController extends Controller
             $data['cover_path'] = $this->storeCover($request->file('cover'));
         } elseif ($request->filled('cover_url')) {
             $fetched = $this->fetchCoverFromUrl($request->cover_url);
-            if ($fetched) {
-                if ($series->cover_path) {
-                    $this->storage->delete($series->cover_path);
-                }
-                $data['cover_path'] = $fetched;
+            if (! $fetched) {
+                throw ValidationException::withMessages([
+                    'cover_url' => 'Cover dari URL itu gagal diunduh. Periksa URL-nya atau unggah file langsung.',
+                ]);
             }
+            if ($series->cover_path) {
+                $this->storage->delete($series->cover_path);
+            }
+            $data['cover_path'] = $fetched;
         }
 
         unset($data['cover'], $data['cover_url']);
         $series->update($data);
+
+        $changed = collect(array_keys($series->getChanges()))->reject(fn ($k) => $k === 'updated_at')->values();
+        ActivityLog::record(
+            'series.update',
+            "Mengubah series \"{$series->title_romaji}\"".($changed->isNotEmpty() ? ' ('.$changed->implode(', ').')' : ' (tanpa perubahan data)').'.',
+            $series,
+        );
 
         return redirect()->route('admin.series.show', $series)
             ->with('success', __('flash.series.updated'));

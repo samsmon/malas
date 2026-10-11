@@ -21,7 +21,7 @@ class UpdateSeriesRequest extends FormRequest
             'synopsis' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['publishing', 'finished', 'on_hiatus', 'discontinued', 'not_yet_published'])],
             'type' => ['required', Rule::in(['manga', 'novel', 'one_shot', 'doujinshi', 'other'])],
-            'cover' => ['nullable', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+            'cover' => ['nullable', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
             'cover_url' => ['nullable', 'url', 'max:2048'],
             'published_from' => ['nullable', 'date'],
             'published_to' => ['nullable', 'date', 'after_or_equal:published_from'],
@@ -40,6 +40,17 @@ class UpdateSeriesRequest extends FormRequest
             'themes.*' => ['nullable', 'string', 'max:100'],
             'demographics' => ['nullable', 'array'],
             'demographics.*' => ['nullable', 'string', 'max:100'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'cover.max' => 'Ukuran cover maksimal 10 MB.',
+            'cover.mimes' => 'Format cover harus JPG, PNG, atau WebP.',
+            'cover.uploaded' => 'Cover gagal diunggah. Coba file yang lebih kecil dari 10 MB.',
+            'published_to.after_or_equal' => 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.',
+            'score.max' => 'Skor maksimal 10.',
         ];
     }
 }

@@ -239,6 +239,8 @@ export default function SeriesEdit({ series, volumes, media }: Props) {
     const [generateOpen, setGenerateOpen]       = useState(false);
     const [generatingVolumes, setGeneratingVolumes] = useState(false);
 
+    const [serverErrors, setServerErrors] = useState<string[]>([]);
+
     // Series form
     const {
         register, control, handleSubmit, setError, watch, setValue,
@@ -303,8 +305,14 @@ export default function SeriesEdit({ series, volumes, media }: Props) {
         setCoverPreview(file ? URL.createObjectURL(file) : null);
     }
 
+    function onInvalid(errs: Record<string, { message?: string } | undefined>) {
+        setServerErrors(Object.entries(errs).map(([k, v]) => v?.message || `${k}: tidak valid`));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function onSubmit(values: SeriesFormValues) {
         setSubmitting(true);
+        setServerErrors([]);
         const fd = new FormData();
         fd.append('_method', 'PUT');
         Object.entries(values).forEach(([k, v]) => {
@@ -327,6 +335,8 @@ export default function SeriesEdit({ series, volumes, media }: Props) {
                 Object.entries(errs).forEach(([k, msg]) => {
                     setError(k as keyof SeriesFormValues, { message: msg });
                 });
+                setServerErrors(Object.values(errs));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
                 setSubmitting(false);
             },
             onFinish: () => setSubmitting(false),
@@ -781,7 +791,15 @@ export default function SeriesEdit({ series, volumes, media }: Props) {
             }
         >
             <Head title={series.title_romaji} />
-            <form id="series-edit-form" onSubmit={handleSubmit(onSubmit)}>
+            <form id="series-edit-form" onSubmit={handleSubmit(onSubmit, onInvalid)}>
+            {serverErrors.length > 0 && (
+                <div role="alert" className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                    <p className="mb-1 font-medium">Gagal menyimpan:</p>
+                    <ul className="list-disc space-y-0.5 pl-5">
+                        {serverErrors.map((m, i) => <li key={i}>{m}</li>)}
+                    </ul>
+                </div>
+            )}
                 {/* Same grid layout as Show */}
                 <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
 

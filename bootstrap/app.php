@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckMenuAccess;
 use App\Http\Middleware\EnsureNotBanned;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LogAdminActivity;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'not_banned' => EnsureNotBanned::class,
             'check.menu' => CheckMenuAccess::class,
+            'log.admin' => LogAdminActivity::class,
         ]);
 
         // Default Authenticate middleware calls route('login') to build its

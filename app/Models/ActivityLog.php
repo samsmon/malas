@@ -12,6 +12,9 @@ class ActivityLog extends Model
 
     public $timestamps = false;
 
+    /** True once record() ran in this request; LogAdminActivity uses it to avoid double entries. */
+    public static bool $recorded = false;
+
     protected $fillable = [
         'user_id',
         'action',
@@ -40,6 +43,8 @@ class ActivityLog extends Model
      */
     public static function record(string $action, string $description, ?Model $subject = null): void
     {
+        static::$recorded = true;
+
         static::create([
             'user_id' => auth()->id() ?? ($subject instanceof User ? $subject->id : null),
             'action' => $action,
