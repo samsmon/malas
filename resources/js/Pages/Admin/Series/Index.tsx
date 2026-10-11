@@ -18,9 +18,6 @@ import {
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/Components/ui/dialog';
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/Components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/Components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { PageProps } from '@/types';
@@ -194,22 +191,21 @@ export default function SeriesIndex({ series, filters }: Props) {
                 >
                     <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
                 </Button>
-                <Select
-                    value={filters.status ?? 'all'}
-                    onValueChange={(v) => handleFilter('status', v ?? 'all')}
+            </div>
+
+            {/* Filter status: segmented control (sama seperti filter tipe) */}
+            <div className="mb-4 overflow-x-auto">
+                <ToggleGroup
+                    value={[filters.status || 'all']}
+                    onValueChange={(vals) => handleFilter('status', vals[0] ?? 'all')}
+                    variant="outline"
+                    size="sm"
                 >
-                    <SelectTrigger className="w-40">
-                        <SelectValue placeholder={t('series.index.allStatuses')}>
-                            {(value: string) => STATUSES.find((s) => s.value === value)?.label ?? t('series.index.allStatuses')}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">{t('series.index.allStatuses')}</SelectItem>
-                        {STATUSES.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                    <ToggleGroupItem value="all">{t('series.index.allStatuses')}</ToggleGroupItem>
+                    {STATUSES.map((s) => (
+                        <ToggleGroupItem key={s.value} value={s.value}>{s.label}</ToggleGroupItem>
+                    ))}
+                </ToggleGroup>
             </div>
 
             {/* Quick filter tipe — Segmented Control, terpisah dari filter lain */}
