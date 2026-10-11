@@ -28,10 +28,14 @@ function NavLink({ item, iconMap, onClick, indent, collapsed }: NavLinkProps) {
     const Icon = item.icon ? (iconMap[item.icon] ?? null) : null;
     const isActive = !!item.route_name && route().current(item.route_name);
     const href = item.route_name && route().has(item.route_name) ? route(item.route_name) : '#';
+    // Ambil data halaman saat kursor melintas supaya klik terasa instan. Halaman admin yang
+    // berhubungan dengan API luar tidak di-prefetch (hover tidak boleh memicu panggilan keluar).
+    const canPrefetch = href !== '#' && !/^admin\.(anilist|ranobedb|search-external)/.test(item.route_name ?? '');
 
     const link = (
         <Link
             href={href}
+            prefetch={canPrefetch ? 'hover' : undefined}
             onClick={onClick}
             className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
