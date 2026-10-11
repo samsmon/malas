@@ -1,0 +1,7 @@
+# Overlay mode TULIS: dev-app memakai role malas_app dan storage produksi (rw).
+# SEMUA simpan/hapus di dev akan mengubah data ASLI. Pakai lewat: deploy/dev.sh rw --yes
+services:
+  dev-app:
+    env_file: [./.env.dev, ./.env.dev.rw]
+    volumes:
+      - malas_storage:/var/www/html/storage
