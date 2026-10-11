@@ -28,7 +28,7 @@ case "${1:-status}" in
     $RW up -d --remove-orphans
     echo "PERINGATAN: malas-dev mode TULIS aktif. Semua simpan/hapus mengubah data ASLI. Kembali: dev.sh ro" ;;
   build)
-    $BASE --profile build run --rm dev-build ;;
+    $BASE --profile build run --rm -T dev-build < /dev/null ;;
   watch)
     $BASE --profile watch up -d dev-vite
     echo "dev-vite aktif (boros memori). Matikan: dev.sh unwatch" ;;
