@@ -36,14 +36,32 @@ services:
       - malas_storage:/var/www/html/storage:ro
     depends_on: [dev-app]
 
-  dev-vite:
+  # Build sekali (default): dev.sh build. Tidak jalan terus-menerus supaya tidak membebani situs rilis.
+  dev-build:
     image: node:20-alpine
-    restart: on-failure:3
+    profiles: ["build"]
+    restart: "no"
     working_dir: /app
     environment:
-      NODE_OPTIONS: "--max-old-space-size=1000"
-    command: sh -c "npm ci --no-audit --no-fund && npx vite build --watch"
-    mem_limit: 1200m
+      NODE_OPTIONS: "--max-old-space-size=1400"
+    command: sh -c "[ -x node_modules/.bin/vite ] || npm ci --no-audit --no-fund; npx vite build"
+    mem_limit: 1800m
+    cpus: "1.0"
+    volumes:
+      - ./:/app:ro
+      - dev_node_modules:/app/node_modules
+      - dev_build:/app/public/build
+
+  # Opsional untuk sesi panjang: dev.sh watch (build ulang otomatis, memori lebih besar).
+  dev-vite:
+    image: node:20-alpine
+    profiles: ["watch"]
+    restart: "no"
+    working_dir: /app
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=1400"
+    command: sh -c "[ -x node_modules/.bin/vite ] || npm ci --no-audit --no-fund; npx vite build --watch"
+    mem_limit: 1800m
     cpus: "1.0"
     volumes:
       - ./:/app:ro
