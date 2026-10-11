@@ -87,7 +87,7 @@ class CollectionGroupController extends Controller
             $available = auth()->user()->collections()
                 ->with('series')
                 ->whereNotIn('collections.id', $existingIds)
-                ->when($search !== '', fn ($q) => $q->whereHas('series', fn ($s) => $s->where('title_romaji', 'like', "%{$search}%")))
+                ->when($search !== '', fn ($q) => $q->whereHas('series', fn ($s) => $s->searchTitle($search)))
                 ->when($type !== 'all', fn ($q) => $q->whereHas('series', fn ($s) => $s->where('type', $type)))
                 ->join('series', 'series.id', '=', 'collections.series_id')
                 ->orderBy('series.title_romaji')

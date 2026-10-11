@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -122,5 +123,27 @@ class Series extends Model
     {
         return static::where('slug', $value)->first()
             ?? static::where('id', $value)->first();
+    }
+
+    /**
+     * Cari judul (romaji, Inggris, Jepang) tanpa membedakan huruf besar/kecil. Postgres `LIKE`
+     * itu case-sensitive (beda dengan SQLite yang dulu dipakai), jadi "ryoukai shinpan" tidak
+     * ketemu "Ryoukai Shinpan". `%`, `_`, dan `!` dari input di-escape (escape char `!`, bukan
+     * backslash, karena `'\'` membingungkan parser placeholder PDO); spasi berulang dirapikan.
+     */
+    public function scopeSearchTitle(Builder $query, ?string $term): Builder
+    {
+        $term = trim(preg_replace('/\s+/u', ' ', (string) $term));
+        if ($term === '') {
+            return $query;
+        }
+
+        $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($term)).'%';
+
+        return $query->where(function (Builder $q) use ($like) {
+            foreach (['title_romaji', 'title_english', 'title_japanese'] as $col) {
+                $q->orWhereRaw("LOWER({$col}) LIKE ? ESCAPE '!'", [$like]);
+            }
+        });
     }
 }

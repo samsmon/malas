@@ -20,9 +20,7 @@ class CommandSearchController extends Controller
         }
 
         $series = Series::query()
-            ->where(fn ($sub) => $sub->where('title_romaji', 'like', "%{$q}%")
-                ->orWhere('title_english', 'like', "%{$q}%")
-            )
+            ->searchTitle($q)
             ->limit(5)
             ->get(['id', 'slug', 'title_romaji'])
             ->map(fn ($s) => ['id' => $s->id, 'slug' => $s->slug, 'title' => $s->title_romaji]);

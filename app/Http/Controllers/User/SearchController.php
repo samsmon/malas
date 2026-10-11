@@ -18,9 +18,7 @@ class SearchController extends Controller
         }
 
         $catalog = Series::query()
-            ->where(fn ($sub) => $sub->where('title_romaji', 'like', "%{$q}%")
-                ->orWhere('title_english', 'like', "%{$q}%")
-            )
+            ->searchTitle($q)
             ->limit(5)
             ->get(['id', 'slug', 'title_romaji'])
             ->map(fn ($s) => ['id' => $s->id, 'slug' => $s->slug, 'title' => $s->title_romaji]);
@@ -28,9 +26,7 @@ class SearchController extends Controller
         $collection = $request->user()
             ->collections()
             ->with('series:id,slug,title_romaji')
-            ->whereHas('series', fn ($sub) => $sub->where('title_romaji', 'like', "%{$q}%")
-                ->orWhere('title_english', 'like', "%{$q}%")
-            )
+            ->whereHas('series', fn ($sub) => $sub->searchTitle($q))
             ->limit(5)
             ->get()
             ->map(fn ($c) => ['id' => $c->id, 'slug' => $c->series->slug, 'title' => $c->series->title_romaji]);

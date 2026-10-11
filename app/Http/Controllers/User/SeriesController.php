@@ -28,9 +28,7 @@ class SeriesController extends Controller
             ->toArray();
 
         $series = Series::query()
-            ->when(request('search'), fn ($q, $s) => $q->where(fn ($sub) => $sub->where('title_romaji', 'like', "%{$s}%")
-                ->orWhere('title_english', 'like', "%{$s}%")
-            ))
+            ->when(request('search'), fn ($q, $s) => $q->searchTitle($s))
             ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
             ->when(request('type'), fn ($q, $t) => $q->where('type', $t))
             // Multi-select genre: OR-match — series lolos kalau punya salah satu genre yang dipilih,
@@ -135,10 +133,7 @@ class SeriesController extends Controller
     {
         $q = trim((string) $request->get('q', ''));
 
-        $series = Series::when($q, fn ($query) => $query->where(fn ($sub) => $sub->where('title_romaji', 'like', "%{$q}%")
-            ->orWhere('title_english', 'like', "%{$q}%")
-        )
-        )
+        $series = Series::when($q, fn ($query) => $query->searchTitle($q))
             ->latest()
             ->limit(24)
             ->get(['id', 'slug', 'title_romaji', 'title_english', 'cover_path', 'type', 'status', 'is_adult'])
