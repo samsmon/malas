@@ -49,6 +49,7 @@ RUN { \
         echo 'memory_limit=256M'; \
         echo 'opcache.enable=1'; \
         echo 'opcache.validate_timestamps=0'; \
+        echo 'session.upload_progress.enabled=0'; \
     } > /usr/local/etc/php/conf.d/malas.ini
 
 WORKDIR /var/www/html
