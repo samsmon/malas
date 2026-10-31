@@ -93,7 +93,7 @@ export function GlobalSearch() {
             title={t('palette.userTitle')}
             description={t('palette.userDescription')}
         >
-            <Command>
+            <Command shouldFilter={false}>
                 <CommandInput
                     placeholder={t('palette.userPlaceholder')}
                     value={query}
@@ -110,6 +110,7 @@ export function GlobalSearch() {
                             const Icon = item.icon ? (ICON_MAP[item.icon] ?? null) : null;
                             const labelKey = menuTranslationKey(item.key);
                             const label = labelKey ? t(labelKey) : item.label;
+                            if (query.trim() && !label.toLowerCase().includes(query.trim().toLowerCase())) return null;
                             return (
                                 <CommandItem key={item.key} value={label} onSelect={() => go(item.route_name!)}>
                                     {Icon && <Icon />}

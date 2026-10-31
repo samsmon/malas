@@ -100,7 +100,7 @@ export function CommandPalette() {
 
     return (
         <CommandDialog open={open} onOpenChange={setOpen} title={t('palette.adminTitle')} description={t('palette.adminDescription')}>
-            <Command>
+            <Command shouldFilter={false}>
                 <CommandInput placeholder={t('palette.adminPlaceholder')} value={query} onValueChange={setQuery} />
                 <CommandList>
                     {searching ? (
@@ -113,6 +113,7 @@ export function CommandPalette() {
                             const Icon = item.icon ? (ICON_MAP[item.icon] ?? null) : null;
                             const labelKey = menuTranslationKey(item.key);
                             const label = labelKey ? t(labelKey) : item.label;
+                            if (query.trim() && !label.toLowerCase().includes(query.trim().toLowerCase())) return null;
                             return (
                                 <CommandItem key={item.key} value={label} onSelect={() => go(item.route_name!)}>
                                     {Icon && <Icon />}
