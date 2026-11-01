@@ -448,9 +448,9 @@ export default function CollectionIndex({ collections }: Props) {
         );
     }
 
-    /** Isi menu klik-kanan — 4 aksi yang sama persis dengan `RowActionsMenu` (dropdown ⋮),
-     *  cuma beda komponen (ContextMenuItem, bukan DropdownMenuItem) karena beda root context.
-     *  Dipakai di grid & compact view, konsisten sama pola context-menu yang udah ada di
+    /** Right-click menu content — the same 4 actions as `RowActionsMenu` (⋮ dropdown),
+     *  only a different component (ContextMenuItem, not DropdownMenuItem) because the root context differs.
+     *  Used in grid & compact view, consistent with the context-menu pattern already used in
      *  table view & `Admin/Series/Index.tsx`. */
     function RowContextMenuItems({ c }: { c: CollectionRow }) {
         const hasUnread = c.read_volumes_count < c.collection_volumes_count;
@@ -588,7 +588,7 @@ export default function CollectionIndex({ collections }: Props) {
                 </Empty>
             ) : (
                 <>
-                    {/* Quick filter tipe — Segmented Control, terpisah dari filter lain */}
+                    {/* Quick type filter — Segmented Control, separate from the other filters */}
                     <div className="mb-3 overflow-x-auto">
                         <ToggleGroup
                             value={[typeFilter]}
@@ -713,14 +713,14 @@ export default function CollectionIndex({ collections }: Props) {
                                             )}
                                         </AdultBlurOverlay>
 
-                                        {/* Hover overlay — desktop only, hover tidak ada di touch device.
-                                            Wrapper luar `inset-0` (bukan cuma `inset-x-0 bottom-0`) buat SAFETY biar
-                                            ke-clamp persis di kotak cover (AdultBlurOverlay bikin `relative` box sendiri
-                                            yang overflow-hidden, tapi overlay ini sibling-nya, bukan child-nya, jadi nggak
-                                            ke-clip otomatis) — tapi wrapper ini sendiri transparan, cuma numpang tempat.
-                                            Background gelap+blur cuma di panel dalam yang auto-height (nempel bawah lewat
-                                            `justify-end` si wrapper), jadi VISUALNYA cuma nutup bagian bawah cover
-                                            (bukan seluruh gambar), tetap aman dari overflow (`max-h-full overflow-y-auto`). */}
+                                        {/* Hover overlay — desktop only, there is no hover on touch devices.
+                                            The outer wrapper is `inset-0` (not just `inset-x-0 bottom-0`) for SAFETY, so it
+                                            is clamped exactly to the cover box (AdultBlurOverlay creates its own `relative` box
+                                            that is overflow-hidden, but this overlay is its sibling, not its child, so it is not
+                                            clipped automatically) — the wrapper itself is transparent and only holds the space.
+                                            The dark+blur background is only on the inner auto-height panel (stuck to the bottom via the
+                                            wrapper's `justify-end`), so VISUALLY it only covers the bottom of the cover
+                                            (not the whole image), and stays safe from overflow (`max-h-full overflow-y-auto`). */}
                                         {c.collection_volumes_count > 0 && (
                                             <div
                                                 className="pointer-events-none absolute inset-0 hidden flex-col justify-end opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100 md:flex"
@@ -799,7 +799,7 @@ export default function CollectionIndex({ collections }: Props) {
                                         </div>
                                     </div>
 
-                                    {/* Default: badge + progress. Di desktop, hover ganti ke stepper + opsi. */}
+                                    {/* Default: badge + progress. On desktop, hover switches to stepper + options. */}
                                     <div className="flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
                                         <div className="flex items-center gap-2 sm:group-hover:hidden">
                                             <SeriesStatusBadge status={c.status} />

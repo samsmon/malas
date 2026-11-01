@@ -118,7 +118,7 @@ class UserController extends Controller
 
         ActivityLog::record(
             'user.role_change',
-            "Mengubah role {$user->name} ({$user->email}) dari {$oldRole} ke {$request->role}.",
+            "Changed the role of {$user->name} ({$user->email}) from {$oldRole} to {$request->role}.",
             $user
         );
 

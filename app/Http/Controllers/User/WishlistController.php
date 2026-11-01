@@ -56,7 +56,7 @@ class WishlistController extends Controller
         $user->wishlistItems()->firstOrCreate(['series_id' => $request->series_id]);
 
         $title = Series::find($request->series_id)?->title_romaji ?? $request->series_id;
-        ActivityLog::record('wishlist.add', "{$user->name} menambahkan \"{$title}\" ke wishlist.", $user);
+        ActivityLog::record('wishlist.add', "{$user->name} added \"{$title}\" to the wishlist.", $user);
 
         return redirect()->back()->with('success', __('flash.wishlist.added'));
     }
@@ -69,7 +69,7 @@ class WishlistController extends Controller
         $title = $wishlistItem->series->title_romaji ?? $seriesId;
         $wishlistItem->delete();
 
-        ActivityLog::record('wishlist.remove', auth()->user()->name." menghapus \"{$title}\" dari wishlist.", auth()->user());
+        ActivityLog::record('wishlist.remove', auth()->user()->name." removed \"{$title}\" from the wishlist.", auth()->user());
 
         return redirect()->back()->with([
             'success' => __('flash.wishlist.deleted'),
@@ -86,7 +86,7 @@ class WishlistController extends Controller
 
         auth()->user()->wishlistItems()->firstOrCreate(['series_id' => $request->series_id]);
 
-        ActivityLog::record('wishlist.undo_remove', auth()->user()->name.' memulihkan item wishlist.', auth()->user());
+        ActivityLog::record('wishlist.undo_remove', auth()->user()->name.' restored a wishlist item.', auth()->user());
 
         return redirect()->back()->with('success', __('flash.wishlist.restored'));
     }

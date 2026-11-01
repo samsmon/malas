@@ -20,7 +20,7 @@ interface SeriesCardProps {
     href: string;
     inCollection?: boolean;
     is_adult?: boolean;
-    /** Tampilkan quick-add/shortcut koleksi di atas cover — dipakai di Katalog, di-skip di halaman lain (mis. hasil "Series Serupa") biar nggak ganggu. */
+    /** Show the collection quick-add/shortcut over the cover — used in the Catalog, skipped on other pages (e.g. "Similar Series" results) to avoid clutter. */
     showCollectionQuickAction?: boolean;
 }
 

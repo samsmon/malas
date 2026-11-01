@@ -30,16 +30,16 @@ class MailSettingsService
     }
 
     /**
-     * Kirim mailable lewat provider yang dikonfigurasi admin (bukan .env) — set config Laravel
-     * secara runtime persis sebelum kirim, sama pola dengan StorageSettingsService::disk() yang
-     * bangun disk S3 ad-hoc dari kredensial tersimpan di DB.
+     * Send a mailable through the provider configured by the admin (not .env). Sets the Laravel config
+     * at runtime right before sending, same pattern as StorageSettingsService::disk(), which
+     * builds an ad-hoc S3 disk from credentials stored in the DB.
      */
     public function send(string $to, Mailable $mailable): bool
     {
         $settings = $this->settings();
 
         if (blank($settings->api_key)) {
-            Log::warning('MailSettingsService::send dipanggil tapi belum ada API key mail terkonfigurasi.');
+            Log::warning('MailSettingsService::send was called but no mail API key is configured.');
 
             return false;
         }

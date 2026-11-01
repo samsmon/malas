@@ -48,10 +48,10 @@ class AniListService
         ?int $year = null,
         string $sort = 'SEARCH_MATCH',
     ): array {
-        // Catatan: `seasonYear` di skema AniList itu konsep musim tayang anime, tidak berlaku
-        // buat manga (selalu balikin kosong). Filter tahun untuk manga harus lewat rentang
-        // `startDate_greater`/`startDate_lesser` (fuzzy date int YYYYMMDD) — diverifikasi langsung
-        // ke API sebelum dipakai di sini.
+        // Note: `seasonYear` in the AniList schema is an anime airing-season concept and does not apply
+        // to manga (it always returns empty). A year filter for manga must use the range
+        // `startDate_greater`/`startDate_lesser` (fuzzy date int YYYYMMDD), verified directly
+        // against the API before use here.
         $gql = <<<GRAPHQL
             query (\$search: String, \$page: Int, \$isAdult: Boolean, \$genres: [String], \$dateGt: FuzzyDateInt, \$dateLt: FuzzyDateInt, \$sort: [MediaSort]) {
                 Page(page: \$page, perPage: 24) {
@@ -87,9 +87,9 @@ class AniListService
     }
 
     /**
-     * Ambil banyak manga sekaligus dalam satu request GraphQL (bukan N request terpisah) —
-     * dipakai buat batch import supaya nggak boros kuota rate-limit AniList (~90 req/menit).
-     * AniList membatasi perPage maksimal 50, jadi caller yang minta lebih banyak harus chunk sendiri.
+     * Fetch many manga at once in a single GraphQL request (instead of N separate requests).
+     * Used for batch import so we do not burn AniList's rate-limit quota (~90 req/min).
+     * AniList caps perPage at 50, so callers that ask for more must chunk it themselves.
      *
      * @param  array<int, int>  $anilistIds
      */
@@ -127,7 +127,7 @@ class AniListService
         $data = $this->request($gql, ['id' => $anilistId]);
 
         if (empty($data['Media'])) {
-            throw new \Exception("Manga dengan AniList ID {$anilistId} tidak ditemukan.");
+            throw new \Exception("Manga with AniList ID {$anilistId} not found.");
         }
 
         return $data['Media'];
@@ -162,9 +162,9 @@ class AniListService
     }
 
     /**
-     * Retry koneksi (timeout/DNS) pakai backoff singkat, tapi khusus HTTP 429 nunggu sesuai
-     * header `Retry-After` dari AniList (bukan skip/gagal) — biar batch import besar tetap
-     * tuntas semua tanpa ada item yang ke-skip gara-gara rate limit sementara.
+     * Retry connection errors (timeout/DNS) with a short backoff, but for HTTP 429 specifically wait per the
+     * AniList `Retry-After` header (instead of skipping/failing) so large batch imports still
+     * finish completely, with no items skipped due to a temporary rate limit.
      */
     private function request(string $query, array $variables = []): array
     {
@@ -178,7 +178,7 @@ class AniListService
                 ]);
             } catch (ConnectionException) {
                 if ($attempt === $maxAttempts) {
-                    throw new \Exception('Tidak dapat terhubung ke AniList API. Periksa koneksi internet.');
+                    throw new \Exception('Unable to connect to the AniList API. Check your internet connection.');
                 }
                 sleep(2);
                 continue;
@@ -207,15 +207,15 @@ class AniListService
             return $json['data'] ?? [];
         }
 
-        throw new \Exception('Gagal mengambil data dari AniList setelah beberapa kali percobaan.');
+        throw new \Exception('Failed to fetch data from AniList after several attempts.');
     }
 
     private function friendlyError(int $status): string
     {
         return match (true) {
-            $status === 404 => 'Data tidak ditemukan di AniList.',
-            $status === 429 => 'Terlalu banyak request ke AniList API. Tunggu beberapa detik lalu coba lagi.',
-            $status >= 500 => 'AniList sedang bermasalah atau tidak dapat diakses. Coba lagi beberapa saat.',
+            $status === 404 => 'Data not found on AniList.',
+            $status === 429 => 'Too many requests to the AniList API. Wait a few seconds and try again.',
+            $status >= 500 => 'AniList is having problems or is unreachable. Try again shortly.',
             default => "AniList API mengembalikan error HTTP {$status}.",
         };
     }

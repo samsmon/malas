@@ -1,10 +1,10 @@
 #!/bin/sh
-# malas-dev: previewer perubahan kode di yado-hosts. Data = database utama.
-#   dev.sh up | ro      mode HANYA-BACA (default): role malas_dev, storage produksi read-only
-#   dev.sh rw --yes     mode TULIS: role malas_app + storage produksi rw (mengubah data ASLI)
-#   dev.sh build        build frontend sekali (~25 dtk) setelah mengubah file di resources/js
-#   dev.sh watch        build ulang otomatis tiap file berubah (boros memori; matikan: dev.sh unwatch)
-#   dev.sh login [id]   terbitkan link login darurat sekali-pakai untuk dev (default super_admin)
+# malas-dev: preview of code changes on yado-hosts. Data = the main database.
+#   dev.sh up | ro      READ-ONLY mode (default): role malas_dev, production storage read-only
+#   dev.sh rw --yes     WRITE mode: role malas_app + production storage rw (changes REAL data)
+#   dev.sh build        build the frontend once (~25 s) after changing files in resources/js
+#   dev.sh watch        rebuild automatically on every file change (memory heavy; stop with: dev.sh unwatch)
+#   dev.sh login [id]   issue a one-time emergency login link for dev (default super_admin)
 #   dev.sh status | logs [service] | down
 set -e
 cd "$(dirname "$0")/.."
@@ -12,26 +12,26 @@ BASE="docker compose --project-directory . -p malas-dev -f deploy/docker-compose
 RW="$BASE -f deploy/docker-compose.dev-rw.yml"
 
 seed_build() {
-  # Isi volume build dengan hasil build image supaya halaman langsung jalan sebelum vite selesai.
+  # Fill the build volume with the image's build output so pages work right away, before vite finishes.
   docker run --rm -v malas-dev_dev_build:/b malas:latest sh -c '[ -f /b/manifest.json ] || [ -f /b/.vite/manifest.json ] || cp -r /opt/public-build-src/. /b/' >/dev/null 2>&1 || true
 }
 
 case "${1:-status}" in
   up|ro)
-    [ -f .env.dev ] || { echo "ERROR: .env.dev tidak ada"; exit 1; }
+    [ -f .env.dev ] || { echo "ERROR: .env.dev not found"; exit 1; }
     $BASE up -d --remove-orphans
     seed_build
-    echo "malas-dev: mode HANYA-BACA aktif -> http://127.0.0.1:8092" ;;
+    echo "malas-dev: READ-ONLY mode active -> http://127.0.0.1:8092" ;;
   rw)
-    [ "$2" = "--yes" ] || { echo "Mode TULIS mengubah data ASLI. Jalankan: dev.sh rw --yes"; exit 1; }
-    [ -f .env.dev.rw ] || { echo "ERROR: .env.dev.rw tidak ada"; exit 1; }
+    [ "$2" = "--yes" ] || { echo "WRITE mode changes REAL data. Run: dev.sh rw --yes"; exit 1; }
+    [ -f .env.dev.rw ] || { echo "ERROR: .env.dev.rw not found"; exit 1; }
     $RW up -d --remove-orphans
-    echo "PERINGATAN: malas-dev mode TULIS aktif. Semua simpan/hapus mengubah data ASLI. Kembali: dev.sh ro" ;;
+    echo "WARNING: malas-dev WRITE mode is active. Every save/delete changes REAL data. Go back: dev.sh ro" ;;
   build)
     $BASE --profile build run --rm -T dev-build < /dev/null ;;
   watch)
     $BASE --profile watch up -d dev-vite
-    echo "dev-vite aktif (boros memori). Matikan: dev.sh unwatch" ;;
+    echo "dev-vite active (memory heavy). Stop with: dev.sh unwatch" ;;
   unwatch)
     $BASE --profile watch stop dev-vite; $BASE --profile watch rm -f dev-vite ;;
   login)
@@ -44,9 +44,9 @@ case "${1:-status}" in
     $BASE ps
     U=$(docker exec malas-dev-dev-app-1 printenv DB_USERNAME 2>/dev/null || true)
     case "$U" in
-      malas_dev) echo "MODE: HANYA-BACA (DB role malas_dev)" ;;
-      "")        echo "MODE: tidak berjalan" ;;
-      *)         echo "MODE: TULIS (DB role $U) -> data ASLI bisa berubah" ;;
+      malas_dev) echo "MODE: READ-ONLY (DB role malas_dev)" ;;
+      "")        echo "MODE: not running" ;;
+      *)         echo "MODE: WRITE (DB role $U) -> REAL data can change" ;;
     esac ;;
-  *) echo "pakai: dev.sh up|ro|rw --yes|build|watch|unwatch|login [id]|status|logs [svc]|down"; exit 1 ;;
+  *) echo "usage: dev.sh up|ro|rw --yes|build|watch|unwatch|login [id]|status|logs [svc]|down"; exit 1 ;;
 esac

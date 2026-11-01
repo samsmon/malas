@@ -208,7 +208,7 @@ export default function SeriesIndex({ series, filters }: Props) {
                 </ToggleGroup>
             </div>
 
-            {/* Quick filter tipe — Segmented Control, terpisah dari filter lain */}
+            {/* Quick type filter — Segmented Control, separate from the other filters */}
             <div className="mb-4 overflow-x-auto">
                 <ToggleGroup
                     value={[filters.type || 'all']}

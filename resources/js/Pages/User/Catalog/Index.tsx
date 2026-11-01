@@ -67,9 +67,9 @@ export default function CatalogIndex({ series, collectionSeriesIds, genreOptions
     const isFirstRender = useRef(true);
 
     useEffect(() => {
-        // Skeleton hanya untuk request ke halaman katalog ini sendiri (filter, cari, paginasi).
-        // Navigasi ke halaman lain (mis. klik kartu ke detail series) tidak boleh menampilkan
-        // skeleton katalog sementara halaman tujuan masih dimuat.
+        // Skeleton only for requests to this catalog page itself (filter, search, pagination).
+        // Navigation to other pages (e.g. clicking a card to the series detail) must not show
+        // the catalog skeleton while the destination page is still loading.
         const removeStart = router.on('start', (event) => {
             const visit = event.detail.visit;
             if (visit.method === 'get' && visit.url.pathname === window.location.pathname) {
@@ -128,7 +128,7 @@ export default function CatalogIndex({ series, collectionSeriesIds, genreOptions
         >
             <Head title={t('title')} />
 
-            {/* Quick filter tipe — Segmented Control, terpisah dari filter lain */}
+            {/* Quick type filter — Segmented Control, separate from the other filters */}
             <div className="mb-3 overflow-x-auto">
                 <ToggleGroup
                     value={[filters.type || 'all']}

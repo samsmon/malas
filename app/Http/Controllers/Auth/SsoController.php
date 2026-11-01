@@ -66,7 +66,7 @@ class SsoController extends Controller
             'code_verifier' => session('sso_code_verifier'),
         ]);
 
-        abort_if($tokenResult === null, 502, 'Tidak dapat menghubungi server SSO.');
+        abort_if($tokenResult === null, 502, 'Unable to reach the SSO server.');
         abort_if($tokenResult['status'] >= 400, 502, 'SSO token exchange failed');
 
         $tokenResponse = json_decode($tokenResult['body'], true);
@@ -77,7 +77,7 @@ class SsoController extends Controller
             'Authorization: Bearer '.$tokenResponse['access_token'],
         ]);
 
-        abort_if($profileResult === null, 502, 'Tidak dapat menghubungi server SSO.');
+        abort_if($profileResult === null, 502, 'Unable to reach the SSO server.');
         abort_if($profileResult['status'] >= 400, 502, 'Failed to fetch profile from SSO');
 
         $profile = json_decode($profileResult['body'], true);
@@ -120,16 +120,16 @@ class SsoController extends Controller
 
     public function logout(Request $request): Response
     {
-        // Local session dihabisin dulu terlepas dari status SSO — logout tetap
-        // harus berhasil secara lokal walau SSO lagi tidak bisa diakses.
+        // The local session is destroyed first regardless of SSO status; logout must still
+        // succeed locally even when SSO is unreachable.
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         if (! $this->ssoReachable()) {
-            // SSO tidak bisa dihubungi — jangan paksa browser navigasi ke domain yang mati
-            // (bisa nge-hang lama nunggu timeout). Sesi lokal sudah bersih, cukup balik ke home.
+            // SSO is unreachable: do not force the browser to navigate to a dead domain
+            // (it could hang for a long time waiting for a timeout). The local session is already clean, so just go back home.
             return Inertia::location('/');
         }
 
@@ -145,8 +145,8 @@ class SsoController extends Controller
     }
 
     /**
-     * Cek cepat apakah SSO bisa dihubungi sebelum nyuruh browser navigasi ke domainnya —
-     * timeout pendek (3 detik) supaya logout tidak terasa nge-hang kalau SSO down/maintenance.
+     * Quick check whether SSO is reachable before telling the browser to navigate to its domain.
+     * Short timeout (3 seconds) so logout does not feel hung when SSO is down/under maintenance.
      */
     private function ssoReachable(): bool
     {

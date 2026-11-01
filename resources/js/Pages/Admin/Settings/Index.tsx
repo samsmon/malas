@@ -50,7 +50,7 @@ interface MailSettingData {
     has_key: boolean;
 }
 
-/** Input password dengan tombol ikon mata buat toggle show/hide — dipakai buat tiga secret (AI, Mail, Storage). */
+/** Password input with an eye icon button to toggle show/hide — used for three secrets (AI, Mail, Storage). */
 function SecretInput({ id, value, onChange, placeholder }: {
     id: string;
     value: string;

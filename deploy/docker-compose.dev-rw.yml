@@ -1,5 +1,5 @@
-# Overlay mode TULIS: dev-app memakai role malas_app dan storage produksi (rw).
-# SEMUA simpan/hapus di dev akan mengubah data ASLI. Pakai lewat: deploy/dev.sh rw --yes
+# WRITE mode overlay: dev-app uses the malas_app role and production storage (rw).
+# EVERY save/delete in dev will change REAL data. Use via: deploy/dev.sh rw --yes
 services:
   dev-app:
     env_file: [./.env.dev, ./.env.dev.rw]

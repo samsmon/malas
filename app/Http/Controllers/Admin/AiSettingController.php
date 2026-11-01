@@ -29,7 +29,7 @@ class AiSettingController extends Controller
 
         $setting->fill($data)->save();
 
-        ActivityLog::record('ai_settings.update', "Mengubah pengaturan AI (provider: {$setting->provider}).");
+        ActivityLog::record('ai_settings.update', "Updated AI settings (provider: {$setting->provider}).");
 
         return redirect()->back()->with('success', __('flash.ai_settings.saved'));
     }

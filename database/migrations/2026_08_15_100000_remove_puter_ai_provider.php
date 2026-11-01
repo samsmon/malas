@@ -7,15 +7,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Puter.js dihapus dari aplikasi — provider 'puter' bukan pilihan valid lagi. Baris lama
-        // yang masih ke-set 'puter' dinormalisasi ke 'gemini' (default baru), tanpa API key —
-        // AiFunfactService sudah otomatis fallback ke teks statis kalau api_key kosong, jadi
-        // perilakunya tetap sama (nggak nge-hit AI beneran) sampai admin isi API key baru.
+        // Puter.js was removed from the app, so the 'puter' provider is no longer a valid choice. Old rows
+        // still set to 'puter' are normalized to 'gemini' (the new default) with no API key.
+        // AiFunfactService already falls back to static text when api_key is empty, so
+        // behavior stays the same (no real AI calls) until an admin enters a new API key.
         AiSetting::where('provider', 'puter')->update(['provider' => 'gemini']);
     }
 
     public function down(): void
     {
-        // Nggak ada state sebelumnya yang perlu dikembalikan — fitur Puter sengaja dihapus.
+        // There is no previous state to restore: the Puter feature was removed on purpose.
     }
 };

@@ -10,13 +10,13 @@ use Illuminate\Console\Command;
 class IssueEmergencyLoginLink extends Command
 {
     /**
-     * Identifier boleh role keyword (super_admin/admin/user, dengan atau tanpa underscore)
-     * atau email/username spesifik. Default super_admin karena ini yang paling sering
-     * dibutuhkan pas SSO down — akun tertinggi yang harus tetap bisa masuk.
+     * The identifier may be a role keyword (super_admin/admin/user, with or without underscore)
+     * or a specific email/username. Defaults to super_admin because that is the account most
+     * often needed when SSO is down: the highest account must always be able to get in.
      */
-    protected $signature = 'sso:emergency-login {identifier=super_admin : Role (super_admin/admin/user) atau email/username spesifik}';
+    protected $signature = 'sso:emergency-login {identifier=super_admin : Role (super_admin/admin/user) or a specific email/username}';
 
-    protected $description = 'Terbitkan link login sekali-pakai tanpa lewat SSO — dipakai kalau Yado benar-benar tidak bisa diakses. Butuh akses CLI/SSH ke server.';
+    protected $description = 'Issue a one-time login link that bypasses SSO, for when Yado is completely unreachable. Requires CLI/SSH access to the server.';
 
     private const ROLE_ALIASES = [
         'super_admin' => 'super_admin',
@@ -34,18 +34,18 @@ class IssueEmergencyLoginLink extends Command
             : $this->resolveByIdentifier($identifier);
 
         if (! $user) {
-            $this->error("Tidak ada user aktif (belum di-ban) yang cocok dengan \"{$identifier}\".");
+            $this->error("No active (not banned) user matches \"{$identifier}\".");
 
             return self::FAILURE;
         }
 
-        $this->info('Akan menerbitkan link login darurat untuk:');
-        $this->line("  Nama     : {$user->name}");
+        $this->info('About to issue an emergency login link for:');
+        $this->line("  Name     : {$user->name}");
         $this->line("  Email    : {$user->email}");
         $this->line('  Role     : '.$user->role);
 
         if (! $this->confirm('Lanjutkan?', true)) {
-            $this->comment('Dibatalkan.');
+            $this->comment('Cancelled.');
 
             return self::SUCCESS;
         }
@@ -55,15 +55,15 @@ class IssueEmergencyLoginLink extends Command
 
         ActivityLog::record(
             'auth.emergency_login_issued',
-            "Link login darurat (CLI, tanpa SSO) diterbitkan untuk {$user->name}.",
+            "Emergency login link (CLI, no SSO) issued for {$user->name}.",
             $user,
         );
 
         $this->newLine();
-        $this->info('Link login (berlaku 15 menit, sekali pakai):');
+        $this->info('Login link (valid for 15 minutes, single use):');
         $this->line($url);
         $this->newLine();
-        $this->comment('Buka link ini di browser untuk langsung login sebagai user di atas.');
+        $this->comment('Open this link in a browser to log in directly as the user above.');
 
         return self::SUCCESS;
     }
@@ -84,7 +84,7 @@ class IssueEmergencyLoginLink extends Command
         }
 
         $choice = $this->choice(
-            "Ada {$candidates->count()} user dengan role {$role} — pilih salah satu:",
+            "There are {$candidates->count()} users with role {$role}. Pick one:",
             $candidates->map(fn ($u) => "{$u->name} ({$u->email})")->all(),
         );
 

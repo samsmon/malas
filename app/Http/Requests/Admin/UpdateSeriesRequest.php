@@ -29,8 +29,8 @@ class UpdateSeriesRequest extends FormRequest
             'score' => ['nullable', 'numeric', 'min:0', 'max:10'],
             'rank' => ['nullable', 'integer', 'min:1'],
             'genres' => ['nullable', 'array'],
-            // nullable di sini penting: ConvertEmptyStringsToNull middleware (global Laravel 12)
-            // ngubah sentinel string kosong (genres[]='') jadi null sebelum validasi jalan.
+            // nullable matters here: the ConvertEmptyStringsToNull middleware (global in Laravel 12)
+            // turns the empty-string sentinel (genres[]='') into null before validation runs.
             'genres.*' => ['nullable', 'string', 'max:100'],
             'authors' => ['nullable', 'array'],
             'authors.*' => ['nullable', 'string', 'max:150'],
@@ -47,9 +47,9 @@ class UpdateSeriesRequest extends FormRequest
     {
         return [
             'cover.max' => 'Ukuran cover maksimal 10 MB.',
-            'cover.mimes' => 'Format cover harus JPG, PNG, atau WebP.',
-            'cover.uploaded' => 'Cover gagal diunggah. Coba file yang lebih kecil dari 10 MB.',
-            'published_to.after_or_equal' => 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.',
+            'cover.mimes' => 'Cover format must be JPG, PNG, or WebP.',
+            'cover.uploaded' => 'Cover upload failed. Try a file smaller than 10 MB.',
+            'published_to.after_or_equal' => 'The end date must not be earlier than the start date.',
             'score.max' => 'Skor maksimal 10.',
         ];
     }

@@ -25,8 +25,8 @@ class SsoFallbackController extends Controller
     }
 
     /**
-     * Selalu balas pesan generik yang sama baik email-nya terdaftar atau tidak — supaya endpoint
-     * ini tidak bisa dipakai buat enumerasi email user yang valid.
+     * Always reply with the same generic message whether or not the email is registered, so this endpoint
+     * cannot be used to enumerate valid user emails.
      */
     public function send(Request $request): RedirectResponse
     {
@@ -40,15 +40,15 @@ class SsoFallbackController extends Controller
             $token = SsoFallbackToken::issueFor($user);
             $loginUrl = route('sso.fallback.consume', ['token' => $token]);
 
-            // Kegagalan provider mail (key salah, Resend down, dll) tidak boleh bikin request ini
-            // 500 — tetap balas pesan generik yang sama, cuma dicatat buat admin.
+            // A mail provider failure (wrong key, Resend down, etc.) must not make this request
+            // return a 500. Still reply with the same generic message and only log it for admins.
             try {
                 $this->mail->send($user->email, new SsoFallbackLoginMail($user, $loginUrl));
-                ActivityLog::record('auth.fallback_requested', "Link login tanpa SSO diminta untuk {$user->name}.", $user);
+                ActivityLog::record('auth.fallback_requested', "Login link without SSO requested for {$user->name}.", $user);
             } catch (\Throwable $e) {
                 report($e);
-                Log::error("Gagal kirim email fallback login untuk {$user->email}: {$e->getMessage()}");
-                ActivityLog::record('auth.fallback_mail_error', "Gagal kirim link login tanpa SSO untuk {$user->name}: {$e->getMessage()}", $user);
+                Log::error("Failed to send fallback login email for {$user->email}: {$e->getMessage()}");
+                ActivityLog::record('auth.fallback_mail_error', "Failed to send no-SSO login link for {$user->name}: {$e->getMessage()}", $user);
             }
         }
 
@@ -59,7 +59,7 @@ class SsoFallbackController extends Controller
     {
         $record = SsoFallbackToken::findValid($token);
 
-        abort_if(! $record, 400, 'Link ini sudah tidak berlaku — sudah dipakai, kedaluwarsa, atau salah. Minta link baru.');
+        abort_if(! $record, 400, 'This link is no longer valid: it was already used, has expired, or is wrong. Request a new link.');
 
         $user = $record->user;
         abort_if(! $user || $user->is_banned, 403);
@@ -68,7 +68,7 @@ class SsoFallbackController extends Controller
 
         $this->accountLink->loginAs($user);
 
-        ActivityLog::record('auth.fallback_login', "{$user->name} login tanpa SSO (fallback).", $user);
+        ActivityLog::record('auth.fallback_login', "{$user->name} logged in without SSO (fallback).", $user);
 
         $default = $user->isAdmin()
             ? route('admin.dashboard', absolute: false)

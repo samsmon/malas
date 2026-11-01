@@ -56,11 +56,11 @@ class Collection extends Model
     }
 
     /**
-     * Route model binding: coba cocokkan lewat slug Series-nya dulu (URL koleksi pakai judul,
-     * bukan UUID) — dibatasi ke koleksi milik user yang lagi login, karena dua user bisa
-     * sama-sama koleksi series yang sama (satu Series::slug bisa "punya" banyak Collection,
-     * satu per user). Fallback ke id kalau nggak ketemu (link lama, atau slug punya user lain —
-     * di kasus itu Policy::view() yang nolak, bukan resolveRouteBinding).
+     * Route model binding: try to match the Series slug first (collection URLs use the title,
+     * not a UUID), scoped to collections owned by the logged-in user, because two users can
+     * collect the same series (one Series::slug can "have" many Collections, one per user).
+     * Falls back to id if nothing is found (old links, or another user's slug; in that case
+     * Policy::view() denies access, not resolveRouteBinding).
      */
     public function resolveRouteBinding($value, $field = null): ?self
     {

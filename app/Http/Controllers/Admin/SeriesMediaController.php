@@ -39,8 +39,8 @@ class SeriesMediaController extends Controller
     {
         $this->authorize('update', $seriesMedia->series);
 
-        // Sengaja tidak ada undo di sini: file-nya langsung dihapus permanen dari storage,
-        // jadi tidak ada apapun untuk dipulihkan tanpa infrastruktur deferred-delete.
+        // Deliberately no undo here: the file is permanently deleted from storage right away,
+        // so there is nothing to restore without deferred-delete infrastructure.
         $this->storage->delete($seriesMedia->image_path);
         $seriesMedia->delete();
 

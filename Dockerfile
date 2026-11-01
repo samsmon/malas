@@ -1,6 +1,6 @@
 # =============================================================================
 # MALAS — Dockerfile (multi-stage: build frontend -> build vendor -> runtime)
-# Build dari root project: docker build -f deploy/Dockerfile -t malas:latest .
+# Build from the project root: docker build -f deploy/Dockerfile -t malas:latest .
 # =============================================================================
 
 # --- Stage 1: build frontend assets (Vite/React) ---
@@ -41,8 +41,8 @@ RUN apk add --no-cache \
         gd \
         opcache
 
-# Upload backup .sql (docs/DOCKER.md) bisa sampai ~100MB (lihat validasi
-# `DatabaseBackupController::import()`), default php.ini cuma 2MB — dinaikkan di sini.
+# Uploading a .sql backup (docs/DOCKER.md) can reach ~100MB (see the validation in
+# `DatabaseBackupController::import()`), the default php.ini only allows 2MB — raised here.
 RUN { \
         echo 'upload_max_filesize=128M'; \
         echo 'post_max_size=128M'; \

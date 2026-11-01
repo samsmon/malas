@@ -13,15 +13,15 @@ use Inertia\Response;
 
 class SeriesController extends Controller
 {
-    // "Manga group" mencakup semua tipe komik; light novel berdiri sendiri karena
-    // vocab genre-nya (dari RanobeDB) cenderung berbeda dari manga (dari AniList).
+    // "Manga group" covers all comic types; light novels stand alone because
+    // their genre vocabulary (from RanobeDB) tends to differ from manga (from AniList).
     private const MANGA_TYPES = ['manga', 'one_shot', 'doujinshi', 'other'];
 
     public function __construct(private StorageSettingsService $storage) {}
 
     public function index(): Response
     {
-        // Cek series mana yang sudah ada di koleksi user
+        // Check which series are already in the user's collection
         $collectionSeriesIds = auth()->user()
             ->collections()
             ->pluck('series_id')
@@ -31,16 +31,16 @@ class SeriesController extends Controller
             ->when(request('search'), fn ($q, $s) => $q->searchTitle($s))
             ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
             ->when(request('type'), fn ($q, $t) => $q->where('type', $t))
-            // Multi-select genre: OR-match — series lolos kalau punya salah satu genre yang dipilih,
-            // bukan wajib semuanya (biar hasilnya nggak keburu kosong pas user pilih beberapa genre).
+            // Multi-select genre: OR-match. A series passes if it has any one of the selected genres,
+            // not all of them (so the result does not end up empty when the user picks several genres).
             ->when(array_filter((array) request('genre', [])), fn ($q, $genres) => $q->where(function ($sub) use ($genres) {
                 foreach ($genres as $genre) {
                     $sub->orWhereJsonContains('genres', $genre);
                 }
             }))
-            // Filter tag — pola sama persis dengan genre di atas (OR-match), tapi kolom terpisah
-            // (`tags`, bukan `genres`) karena sumbernya beda: genre AniList (flat, ~20 nilai tetap)
-            // vs tag AniList (~470 nilai, punya kategori, lihat AniListController::extractAllTagNames()).
+            // Tag filter: exactly the same pattern as the genre above (OR-match), but a separate column
+            // (`tags`, not `genres`) because the source differs: AniList genres (flat, ~20 fixed values)
+            // vs AniList tags (~470 values, with categories, see AniListController::extractAllTagNames()).
             ->when(array_filter((array) request('tag', [])), fn ($q, $tags) => $q->where(function ($sub) use ($tags) {
                 foreach ($tags as $tag) {
                     $sub->orWhereJsonContains('tags', $tag);
@@ -100,12 +100,12 @@ class SeriesController extends Controller
     }
 
     /**
-     * Kelompokkan tag yang benar-benar dipakai di katalog per kategori AniList (mis. "Theme"),
-     * buat tree filter tag di Catalog/Index.tsx. Kategori mentah AniList (mis. "Theme-Reincarnation")
-     * disederhanakan ke bagian sebelum tanda hubung pertama ("Theme") biar tree-nya nggak terlalu
-     * dalam — detail sub-kategori tetap kebaca dari nama tag itu sendiri.
+     * Group the tags actually used in the catalog by AniList category (e.g. "Theme"),
+     * for the tag filter tree in Catalog/Index.tsx. The raw AniList category (e.g. "Theme-Reincarnation")
+     * is simplified to the part before the first hyphen ("Theme") so the tree is not too
+     * deep. The sub-category detail is still readable from the tag name itself.
      *
-     * @return array<string, array<int, string>> kategori => daftar nama tag, terurut
+     * @return array<string, array<int, string>> category => list of tag names, sorted
      */
     private function tagOptions(): array
     {
@@ -158,10 +158,10 @@ class SeriesController extends Controller
 
     public function show(Series $series): Response
     {
-        // Rekomendasi "Series Serupa" — gantiin section daftar volume yang dihapus (app ini
-        // cuma buat ngetrack progress baca & kepemilikan, bukan galeri per volume). Prioritas
-        // OR-match genre yang sama (biar nggak keburu kosong kalau genre-nya banyak/spesifik),
-        // fallback ke tipe yang sama aja kalau series ini nggak punya genre sama sekali.
+        // "Similar Series" recommendations, replacing the removed volume list section (this app
+        // only tracks reading progress & ownership, it is not a per-volume gallery). Priority:
+        // OR-match on shared genres (so it does not end up empty when genres are many/specific),
+        // fall back to the same type only if this series has no genres at all.
         $similarSeries = Series::query()
             ->where('id', '!=', $series->id)
             ->where(function ($q) use ($series) {

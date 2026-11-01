@@ -90,14 +90,14 @@ class Series extends Model
     }
 
     /**
-     * Bikin slug dari judul — hilangkan karakter selain huruf/angka/spasi (@, !, koma, titik dua,
-     * dll ikut kebuang lewat Str::slug), full judul dipakai apa adanya tanpa dipotong. Kalau slug
-     * hasilnya sudah dipakai series lain, tambah suffix angka (-2, -3, dst) sampai unik.
+     * Build a slug from the title. Characters other than letters/digits/spaces (@, !, commas,
+     * colons, etc.) are dropped by Str::slug, and the full title is used without truncation. If the
+     * resulting slug is already taken by another series, append a numeric suffix (-2, -3, ...) until unique.
      */
     public static function generateUniqueSlug(string $title, ?string $ignoreId = null): string
     {
-        // Dictionary default Str::slug() (mis. '@' => 'at') sengaja dikosongkan supaya karakter
-        // simbol dibuang langsung, bukan dikonversi jadi kata.
+        // The default Str::slug() dictionary (e.g. '@' => 'at') is deliberately emptied so
+        // symbols are dropped outright instead of converted to words.
         $base = Str::slug($title, '-', 'en', []) ?: 'series';
         $slug = $base;
         $suffix = 2;
@@ -116,8 +116,8 @@ class Series extends Model
     }
 
     /**
-     * Route model binding: coba cocokkan lewat slug dulu (URL katalog pakai slug dari judul),
-     * fallback ke id — supaya link lama yang masih pakai uuid tetap jalan.
+     * Route model binding: try to match by slug first (catalog URLs use the title slug),
+     * fall back to id so old links that still use a uuid keep working.
      */
     public function resolveRouteBinding($value, $field = null): ?self
     {
@@ -126,10 +126,10 @@ class Series extends Model
     }
 
     /**
-     * Cari judul (romaji, Inggris, Jepang) tanpa membedakan huruf besar/kecil. Postgres `LIKE`
-     * itu case-sensitive (beda dengan SQLite yang dulu dipakai), jadi "ryoukai shinpan" tidak
-     * ketemu "Ryoukai Shinpan". `%`, `_`, dan `!` dari input di-escape (escape char `!`, bukan
-     * backslash, karena `'\'` membingungkan parser placeholder PDO); spasi berulang dirapikan.
+     * Case-insensitive title search (romaji, English, Japanese). Postgres `LIKE` is
+     * case-sensitive (unlike the SQLite used earlier), so "ryoukai shinpan" would not
+     * match "Ryoukai Shinpan". `%`, `_`, and `!` in the input are escaped (escape char `!`, not
+     * backslash, because `'\'` confuses the PDO placeholder parser); repeated spaces are collapsed.
      */
     public function scopeSearchTitle(Builder $query, ?string $term): Builder
     {

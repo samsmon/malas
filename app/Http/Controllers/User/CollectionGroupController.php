@@ -51,7 +51,7 @@ class CollectionGroupController extends Controller
 
         $group = auth()->user()->collectionGroups()->create(['name' => $request->name]);
 
-        ActivityLog::record('collection_group.create', auth()->user()->name." membuat grup koleksi \"{$group->name}\".", $group);
+        ActivityLog::record('collection_group.create', auth()->user()->name." created collection group \"{$group->name}\".", $group);
 
         return redirect()->route('collection.groups.show', $group->slug)->with('success', __('flash.collection_groups.created'));
     }
@@ -127,7 +127,7 @@ class CollectionGroupController extends Controller
 
         $group->update(['name' => $request->name]);
 
-        ActivityLog::record('collection_group.rename', auth()->user()->name." mengubah nama grup koleksi jadi \"{$group->name}\".", $group);
+        ActivityLog::record('collection_group.rename', auth()->user()->name." renamed collection group to \"{$group->name}\".", $group);
 
         return redirect()->route('collection.groups.show', $group->slug)->with('success', __('flash.collection_groups.renamed'));
     }
@@ -146,7 +146,7 @@ class CollectionGroupController extends Controller
 
         ActivityLog::record(
             'collection_group.visibility',
-            auth()->user()->name.' mengubah visibilitas grup koleksi "'.$group->name.'" jadi '.($request->boolean('is_public') ? 'publik' : 'privat').'.',
+            auth()->user()->name.' changed the visibility of collection group "'.$group->name.'" to '.($request->boolean('is_public') ? 'public' : 'private').'.',
             $group,
         );
 
@@ -160,7 +160,7 @@ class CollectionGroupController extends Controller
         $name = $group->name;
         $group->delete();
 
-        ActivityLog::record('collection_group.delete', auth()->user()->name." menghapus grup koleksi \"{$name}\".");
+        ActivityLog::record('collection_group.delete', auth()->user()->name." deleted collection group \"{$name}\".");
 
         return redirect()->route('collection.groups.index')->with('success', __('flash.collection_groups.deleted'));
     }
@@ -174,15 +174,15 @@ class CollectionGroupController extends Controller
             'collection_ids.*' => ['uuid'],
         ]);
 
-        // Wajib validasi collection_ids beneran milik user ini — jangan pernah percaya ID dari
-        // client mentah-mentah, atau user bisa nge-link koleksi orang lain ke grupnya.
+        // Must validate that collection_ids really belong to this user. Never trust IDs from the
+        // client as-is, or a user could link someone else's collections to their group.
         $validIds = auth()->user()->collections()->whereIn('id', $request->collection_ids)->pluck('id');
 
         $group->collections()->syncWithoutDetaching($validIds);
 
         ActivityLog::record(
             'collection_group.add_items',
-            auth()->user()->name." menambahkan {$validIds->count()} manga ke grup \"{$group->name}\".",
+            auth()->user()->name." added {$validIds->count()} manga to group \"{$group->name}\".",
             $group,
         );
 
@@ -198,13 +198,13 @@ class CollectionGroupController extends Controller
 
         ActivityLog::record(
             'collection_group.remove_item',
-            auth()->user()->name." menghapus \"{$collection->series->title_romaji}\" dari grup \"{$group->name}\".",
+            auth()->user()->name." removed \"{$collection->series->title_romaji}\" from group \"{$group->name}\".",
             $group,
         );
 
         return redirect()->back()->with([
             'success' => __('flash.collection_groups.item_removed'),
-            // Cuma detach pivot (bukan hard-delete Collection-nya), jadi undo-nya simpel: re-attach.
+            // Only detaches the pivot (not a hard delete of the Collection), so undo is simple: re-attach.
             'undo_url' => route('collection.groups.items.undoRemove', $group->slug),
             'undo_payload' => ['collection_id' => $collection->id],
         ]);
@@ -228,7 +228,7 @@ class CollectionGroupController extends Controller
 
         ActivityLog::record(
             'collection_group.undo_remove_item',
-            auth()->user()->name." membatalkan penghapusan manga dari grup \"{$group->name}\".",
+            auth()->user()->name." undid removing manga from group \"{$group->name}\".",
             $group,
         );
 

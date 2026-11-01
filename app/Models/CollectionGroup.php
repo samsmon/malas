@@ -53,9 +53,9 @@ class CollectionGroup extends Model
     }
 
     /**
-     * Slug = username + nama grup, biar URL nggak pakai random string (uuid) dan gampang dibaca
-     * saat grup dibagikan (mis. lewat profil publik). Fallback ke id user kalau username belum
-     * ke-sync dari SSO — sama pola fallback-nya dengan User::resolveRouteBinding().
+     * Slug = username + group name, so URLs avoid a random string (uuid) and are easy to read
+     * when a group is shared (e.g. via the public profile). Falls back to the user id if the
+     * username has not been synced from SSO yet. Same fallback pattern as User::resolveRouteBinding().
      */
     public static function generateUniqueSlug(User $user, string $name, ?string $ignoreId = null): string
     {
@@ -76,9 +76,8 @@ class CollectionGroup extends Model
         return $slug;
     }
 
-    /**
-     * Route model binding: coba cocokkan lewat slug dulu, fallback ke id — pola yang sama dengan
-     * Series::resolveRouteBinding() / User::resolveRouteBinding().
+Route model binding: try to match by slug first, fall back to id. Same pattern as
+Series::resolveRouteBinding() / User::resolveRouteBinding().
      */
     public function resolveRouteBinding($value, $field = null): ?self
     {

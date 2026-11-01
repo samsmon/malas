@@ -149,9 +149,9 @@ function FieldError({ message }: { message?: string }) {
     return <p className="text-xs text-destructive">{message}</p>;
 }
 
-// FormData butuh key ber-index (genres[0], genres[1], ...) supaya Laravel parse-nya jadi array,
-// bukan string tunggal — array kosong sengaja TETAP dikirim (genres[] tanpa isi) supaya "hapus
-// semua tag" beneran ke-submit, bukan cuma di-skip diam-diam kayak field kosong lainnya.
+// FormData needs indexed keys (genres[0], genres[1], ...) so Laravel parses them as an array,
+// not a single string — an empty array is intentionally STILL sent (genres[] with no value) so that
+// "remove all tags" is actually submitted, not silently skipped like other empty fields.
 function appendTagList(fd: FormData, key: string, values: string[]) {
     if (values.length === 0) {
         fd.append(`${key}[]`, '');
@@ -193,8 +193,8 @@ export default function SeriesEdit({ series, volumes, media }: Props) {
     const [submitting, setSubmitting]       = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
 
-    // Genre & tags — bebas (bukan enum tetap), diedit lewat TagListInput, dikirim terpisah dari
-    // seriesSchema (react-hook-form) karena bentuknya array, bukan field skalar.
+    // Genre & tags — free-form (not a fixed enum), edited via TagListInput, sent separately from
+    // seriesSchema (react-hook-form) because they are arrays, not scalar fields.
     const [genres, setGenres]             = useState<string[]>(series.genres ?? []);
     const [authors, setAuthors]           = useState<string[]>(series.authors ?? []);
     const [illustrators, setIllustrators] = useState<string[]>(series.illustrators ?? []);
@@ -306,7 +306,7 @@ export default function SeriesEdit({ series, volumes, media }: Props) {
     }
 
     function onInvalid(errs: Record<string, { message?: string } | undefined>) {
-        setServerErrors(Object.entries(errs).map(([k, v]) => v?.message || `${k}: tidak valid`));
+        setServerErrors(Object.entries(errs).map(([k, v]) => v?.message || `${k}: invalid`));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -992,7 +992,7 @@ export default function SeriesEdit({ series, volumes, media }: Props) {
                             {...register('synopsis')}
                         />
 
-                        {/* Genre & Tags — bebas, diketik manual atau keisi dari Sync AniList/RanobeDB */}
+                        {/* Genre & Tags — free-form, typed manually or filled from Sync AniList/RanobeDB */}
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">{t('series.genres')}</Label>

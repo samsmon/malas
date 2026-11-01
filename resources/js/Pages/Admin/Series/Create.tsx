@@ -77,7 +77,7 @@ export default function SeriesCreate() {
     });
 
     function onInvalid(errs: Record<string, { message?: string } | undefined>) {
-        setServerErrors(Object.entries(errs).map(([k, v]) => v?.message || `${k}: tidak valid`));
+        setServerErrors(Object.entries(errs).map(([k, v]) => v?.message || `${k}: invalid`));
     }
 
     function onSubmit(values: FormValues) {

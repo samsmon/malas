@@ -37,9 +37,9 @@ class ActivityLog extends Model
     }
 
     /**
-     * Kalau tidak ada user yang login (mis. request login-tanpa-SSO dari guest) tapi subject-nya
-     * adalah User, atribusikan log ke akun itu — user_id di tabel ini NOT NULL, jadi butuh
-     * fallback selain auth()->id() supaya aksi yang dipicu guest tetap bisa dicatat.
+     * If no user is logged in (e.g. a guest's non-SSO login request) but the subject
+     * is a User, attribute the log to that account. user_id on this table is NOT NULL, so we need
+     * a fallback besides auth()->id() so guest-triggered actions can still be recorded.
      */
     public static function record(string $action, string $description, ?Model $subject = null): void
     {

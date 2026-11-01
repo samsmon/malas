@@ -10,7 +10,7 @@ class GenreFunfact extends Model
 {
     use HasUuids;
 
-    // Batas default generate ulang manual per minggu — bisa dioverride per user lewat kolom quota_override.
+    // Default limit for manual regenerations per week; can be overridden per user via the quota_override column.
     public const DEFAULT_MANUAL_QUOTA = 5;
 
     protected $fillable = [

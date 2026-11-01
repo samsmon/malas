@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# MALAS — Deploy Script (Docker, generik untuk LXC/VM Proxmox atau Linux manapun)
-# Jalankan dari root direktori project: bash deploy/deploy-docker.sh
+# MALAS — Deploy Script (Docker, generic for Proxmox LXC/VM or any Linux)
+# Run from the project root directory: bash deploy/deploy-docker.sh
 #
-# Asumsi: Docker Engine + Docker Compose plugin SUDAH terpasang di host/LXC/VM.
-# Script ini TIDAK menyentuh Proxmox API sama sekali — cuma perlu `docker` dan
-# `docker compose` ada di PATH, jadi portable ke Linux manapun (bukan cuma Proxmox).
+# Assumption: Docker Engine + the Docker Compose plugin are ALREADY installed on the host/LXC/VM.
+# This script does NOT touch the Proxmox API at all — it only needs `docker` and
+# `docker compose` on the PATH, so it is portable to any Linux (not just Proxmox).
 # =============================================================================
 set -euo pipefail
 
@@ -18,29 +18,29 @@ warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 step()    { echo -e "\n${BOLD}▶ $*${NC}"; }
 
-# Root project = satu level di atas folder deploy/
+# Project root = one level above the deploy/ folder
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOY_DIR="${PROJECT_ROOT}/deploy"
 cd "$DEPLOY_DIR"
 
-[[ -f "${PROJECT_ROOT}/artisan" ]] || error "Script harus dijalankan dari project MALAS (deploy/deploy-docker.sh)."
+[[ -f "${PROJECT_ROOT}/artisan" ]] || error "This script must be run from the MALAS project (deploy/deploy-docker.sh)."
 
 # =============================================================================
-step "Cek prasyarat"
+step "Check prerequisites"
 # =============================================================================
-command -v docker &>/dev/null || error "Docker belum terpasang. Install Docker Engine dulu di LXC/VM ini, lalu jalankan ulang script ini."
-docker compose version &>/dev/null || error "Docker Compose plugin belum ada ('docker compose' gagal). Install docker-compose-plugin dulu."
-success "Docker & Docker Compose terdeteksi."
+command -v docker &>/dev/null || error "Docker is not installed. Install Docker Engine on this LXC/VM first, then run this script again."
+docker compose version &>/dev/null || error "Docker Compose plugin is missing ('docker compose' failed). Install docker-compose-plugin first."
+success "Docker & Docker Compose detected."
 
 # =============================================================================
-step "Setup file .env"
+step "Set up .env file"
 # =============================================================================
 if [[ ! -f ".env" ]]; then
     cp .env.docker.example .env
-    info "File deploy/.env dibuat dari .env.docker.example."
+    info "Created deploy/.env from .env.docker.example."
 
-    read -rp "Domain / IP:port yang dipakai akses app (contoh: malas.example.com atau 123.45.67.89:8080): " APP_DOMAIN
-    read -rp "Port nginx di host [8080]: " APP_PORT
+    read -rp "Domain / IP:port used to access the app (e.g. malas.example.com or 123.45.67.89:8080): " APP_DOMAIN
+    read -rp "Nginx port on the host [8080]: " APP_PORT
     APP_PORT="${APP_PORT:-8080}"
 
     while true; do
@@ -49,15 +49,15 @@ if [[ ! -f ".env" ]]; then
         read -rsp "Konfirmasi password: " DB_PASSWORD2
         echo ""
         [[ "$DB_PASSWORD" == "$DB_PASSWORD2" ]] && break
-        warn "Password tidak cocok, coba lagi."
+        warn "Passwords do not match, try again."
     done
 
-    warn "SSO credentials wajib diisi agar login berfungsi (boleh dikosongkan dulu kalau mau pakai Login via Email saja)."
-    read -rp "SSO_CLIENT_ID (opsional): " SSO_CLIENT_ID
+    warn "SSO credentials are required for login to work (you may leave them empty for now if you only want to use Login via Email)."
+    read -rp "SSO_CLIENT_ID (optional): " SSO_CLIENT_ID
     read -rsp "SSO_CLIENT_SECRET (opsional): " SSO_CLIENT_SECRET
     echo ""
 
-    read -rp "Gunakan HTTPS untuk APP_URL? (Y/n): " USE_HTTPS
+    read -rp "Use HTTPS for APP_URL? (Y/n): " USE_HTTPS
     PROTO="https"
     if [[ "${USE_HTTPS,,}" == "n" ]]; then
         PROTO="http"
@@ -71,42 +71,42 @@ if [[ ! -f ".env" ]]; then
     sed -i "s|SSO_REDIRECT_URI=.*|SSO_REDIRECT_URI=${PROTO}://${APP_DOMAIN}/auth/callback|" .env
     sed -i "s|SSO_BASE_URL=.*|SSO_BASE_URL=https://sso.yado.my.id|"     .env
 
-    success "deploy/.env dikonfigurasi."
+    success "deploy/.env configured."
 else
-    info "deploy/.env sudah ada — dipakai apa adanya (hapus file ini kalau mau setup ulang dari awal)."
+    info "deploy/.env already exists — using it as-is (delete this file to set up again from scratch)."
 fi
 
 # =============================================================================
 step "Build image"
 # =============================================================================
 docker compose build
-success "Image ter-build."
+success "Image built."
 
-# Generate APP_KEY kalau belum ada (lewat container sesaat, sebelum stack full jalan)
+# Generate APP_KEY if missing (via a one-off container, before the full stack is running)
 if ! grep -q "^APP_KEY=base64:" .env; then
     info "Generate APP_KEY..."
     KEY=$(docker compose run --rm --no-deps app php artisan key:generate --show)
     sed -i "s|APP_KEY=.*|APP_KEY=${KEY}|" .env
-    success "APP_KEY di-generate."
+    success "APP_KEY generated."
 fi
 
 # =============================================================================
-step "Jalankan container"
+step "Start containers"
 # =============================================================================
 docker compose up -d
-success "Container app, queue, nginx, db jalan."
+success "Containers app, queue, nginx, db are running."
 
 # =============================================================================
-step "Tunggu Postgres siap"
+step "Wait for Postgres to be ready"
 # =============================================================================
-info "Menunggu healthcheck database..."
+info "Waiting for the database healthcheck..."
 for _ in $(seq 1 30); do
     STATUS=$(docker compose ps -q db | xargs docker inspect -f '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
     [[ "$STATUS" == "healthy" ]] && break
     sleep 2
 done
-[[ "$STATUS" == "healthy" ]] || error "Database Postgres tidak sehat setelah 60 detik — cek 'docker compose logs db'."
-success "Database siap."
+[[ "$STATUS" == "healthy" ]] || error "Postgres database is not healthy after 60 seconds — check 'docker compose logs db'."
+success "Database ready."
 
 # =============================================================================
 step "Migration & seeding"
@@ -115,48 +115,48 @@ docker compose exec -T app php artisan migrate --force
 docker compose exec -T app php artisan db:seed --class=RoleSeeder --force
 docker compose exec -T app php artisan db:seed --class=MenuSeeder --force
 docker compose exec -T app php artisan storage:link || true
-success "Migration dan seeding selesai."
+success "Migration and seeding finished."
 
 # =============================================================================
-step "Migrasi data lama (opsional)"
+step "Migrate old data (optional)"
 # =============================================================================
 echo ""
-read -rp "Ada data lama (SQLite/MySQL) yang mau disalin ke Postgres ini? (y/N): " DO_MIGRATE
+read -rp "Is there old data (SQLite/MySQL) to copy into this Postgres? (y/N): " DO_MIGRATE
 if [[ "${DO_MIGRATE,,}" == "y" ]]; then
-    warn "Pastikan koneksi sumber ('sqlite' atau 'mysql') masih valid di .env container app SEBELUM lanjut,"
-    warn "atau jalankan manual: docker compose exec app php artisan malas:migrate-data --from=sqlite --to=pgsql"
-    read -rp "Nama connection sumber [sqlite]: " FROM_CONN
+    warn "Make sure the source connection ('sqlite' or 'mysql') is still valid in the app container's .env BEFORE continuing,"
+    warn "or run manually: docker compose exec app php artisan malas:migrate-data --from=sqlite --to=pgsql"
+    read -rp "Source connection name [sqlite]: " FROM_CONN
     FROM_CONN="${FROM_CONN:-sqlite}"
     docker compose exec -T app php artisan malas:migrate-data --from="${FROM_CONN}" --to=pgsql --truncate --no-interaction
-    success "Migrasi data selesai — cek jumlah baris tiap tabel penting sebelum menganggap cutover selesai."
+    success "Data migration finished — check the row counts of each important table before considering the cutover done."
 else
-    info "Skip migrasi data (fresh install)."
+    info "Skipping data migration (fresh install)."
 fi
 
 # =============================================================================
-step "Cache production"
+step "Production cache"
 # =============================================================================
 docker compose exec -T app php artisan config:cache
 docker compose exec -T app php artisan route:cache
 docker compose exec -T app php artisan view:cache
 docker compose exec -T app php artisan optimize
-success "Cache siap."
+success "Cache ready."
 
 # =============================================================================
 echo ""
 echo -e "${GREEN}${BOLD}╔═══════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}${BOLD}║   MALAS (Docker) berhasil di-deploy!      ║${NC}"
+echo -e "${GREEN}${BOLD}║   MALAS (Docker) deployed successfully!  ║${NC}"
 echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════╝${NC}"
 echo ""
 PORT=$(grep '^APP_PORT=' .env | cut -d= -f2)
-echo -e "  URL         : http://localhost:${PORT:-8080}  (lewat nginx container)"
+echo -e "  URL         : http://localhost:${PORT:-8080}  (via the nginx container)"
 echo -e "  Compose dir : ${DEPLOY_DIR}"
 echo ""
-echo -e "${BOLD}Perintah berguna:${NC}"
-echo -e "  Logs semua service : docker compose -f ${DEPLOY_DIR}/docker-compose.yml logs -f"
+echo -e "${BOLD}Useful commands:${NC}"
+echo -e "  Logs, all services : docker compose -f ${DEPLOY_DIR}/docker-compose.yml logs -f"
 echo -e "  Stop stack          : docker compose -f ${DEPLOY_DIR}/docker-compose.yml down"
 echo -e "  Restart worker      : docker compose -f ${DEPLOY_DIR}/docker-compose.yml restart queue"
 echo ""
-echo -e "Untuk HTTPS/domain publik, lihat opsi Cloudflare Tunnel / reverse proxy di docs/DOCKER.md."
-echo -e "Untuk update kode di masa mendatang, jalankan: ${BOLD}bash deploy/update-docker.sh${NC}"
+echo -e "For HTTPS/a public domain, see the Cloudflare Tunnel / reverse proxy options in docs/DOCKER.md."
+echo -e "To update the code in the future, run: ${BOLD}bash deploy/update-docker.sh${NC}"
 echo ""

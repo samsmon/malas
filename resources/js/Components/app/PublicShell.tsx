@@ -5,8 +5,8 @@ import { Button } from '@/Components/ui/button';
 import { LoginMethodDialog } from '@/Components/app/LoginMethodDialog';
 
 /**
- * Shell minimal buat halaman publik yang bisa diakses tanpa login (mis. profil publik, grup
- * koleksi publik) — cuma header + tombol login, tanpa sidebar/menu internal.
+ * Minimal shell for public pages accessible without login (e.g. public profile, public
+ * collection group) — just a header + login button, no sidebar/internal menu.
  */
 export function PublicShell({ header, children }: PropsWithChildren<{ header?: ReactNode }>) {
     const { t } = useTranslation();

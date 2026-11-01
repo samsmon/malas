@@ -35,7 +35,7 @@ class MailSettingController extends Controller
         $setting->fill($data)->save();
         $this->mail->forgetCache();
 
-        ActivityLog::record('mail_settings.update', "Mengubah pengaturan Email (provider: {$setting->provider}).");
+        ActivityLog::record('mail_settings.update', "Updated Email settings (provider: {$setting->provider}).");
 
         return redirect()->back()->with('success', __('flash.mail_settings.saved'));
     }

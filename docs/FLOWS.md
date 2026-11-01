@@ -1,7 +1,9 @@
 # FLOWS — Malas v2
 
-**Versi:** 2.5
-**Tanggal:** 2026-06-26, diperbarui 2026-08-03
+**Version:** 2.5
+**Date:** 2026-06-26, updated 2026-08-03
+
+Note: quoted button, menu, and message texts are the literal Indonesian UI strings (the default locale is `id`), with an English gloss added where helpful.
 
 ---
 
@@ -9,465 +11,465 @@
 
 ### Admin Sidebar
 ```
-Dashboard             /admin/dashboard      (stat cards + chart)
-├── Katalog
+Dashboard             /admin/dashboard      (stat cards + charts)
+├── Katalog (Catalog)
 │   ├── Series        /admin/series         (bulk delete, hover card, context menu, ⌘K)
-│   └── Volume        (nested di halaman detail series, bukan route sendiri)
-├── Koleksi           /admin/collections    (per user, drill-down)
-├── Peminjaman        /admin/loans
-├── Pengguna          /admin/users
-├── Tiket             /admin/tickets
-├── Kuota AI Funfact  /admin/funfact-quota  (kuota generate-ulang Selera Genre per user)
-├── Log Aktivitas     /admin/activity-logs
-├── Sistem
+│   └── Volume        (nested in the series detail page, not its own route)
+├── Koleksi (Collections)   /admin/collections    (per user, drill-down)
+├── Peminjaman (Loans)      /admin/loans
+├── Pengguna (Users)        /admin/users
+├── Tiket (Tickets)         /admin/tickets
+├── Kuota AI Funfact  /admin/funfact-quota  (per-user Genre Taste regenerate quota)
+├── Log Aktivitas (Activity Log)     /admin/activity-logs
+├── Sistem (System)
 │   ├── Menu          /admin/menus          (drag-drop reorder, preview /admin/menus/user)
-│   └── Pengumuman    /admin/announcements
+│   └── Pengumuman (Announcements)    /admin/announcements
 ├── AniList Search    /admin/anilist
-├── RanobeDB Search   /admin/ranobedb       (light novel, paralel dengan AniList)
-├── Search Gabungan   /admin/search-external (AniList + RanobeDB sekaligus)
-└── Pengaturan        /admin/settings       (tab Storage/Database/Konten/AI, super_admin only)
+├── RanobeDB Search   /admin/ranobedb       (light novels, parallel to AniList)
+├── Search Gabungan (Combined Search)   /admin/search-external (AniList + RanobeDB at once)
+└── Pengaturan (Settings)        /admin/settings       (Storage/Database/Content/AI tabs, super_admin only)
 ```
 
-Catatan: tidak ada `/admin/roles` terpisah. Role management bagian dari halaman detail user (`/admin/users/{id}`). Command Palette (⌘K/Ctrl+K) tersedia di semua halaman admin lewat tombol di sidebar. Tombol ganti bahasa (id/en/ja) dan ThemeSwitcher (Light/Dark/System) ada bersebelahan di sidebar footer.
+Note: there is no separate `/admin/roles`. Role management is part of the user detail page (`/admin/users/{id}`). The Command Palette (⌘K/Ctrl+K) is available on all admin pages through a button in the sidebar. The language switch button (id/en/ja) and the ThemeSwitcher (Light/Dark/System) sit side by side in the sidebar footer.
 
 ### User Sidebar
 ```
-Dashboard             /dashboard            (stat cards, chart, Carousel rekomendasi, Selera Genre)
-Katalog               /catalog              (browse series, read-only, avatar kolektor)
-Koleksiku             /my-collection        (koleksi milik sendiri, grid poster/table)
-Wishlist              /wishlist             (series yang ingin dibaca, belum dikoleksi)
-Pinjaman Saya         /my-loans
-Direktori             /directory            (cari & follow user lain dengan profil publik)
-Tiket                 /tickets
+Dashboard             /dashboard            (stat cards, charts, recommendations Carousel, Genre Taste)
+Katalog (Catalog)               /catalog              (browse series, read-only, collector avatars)
+Koleksiku (My Collection)             /my-collection        (own collection, poster grid/table)
+Wishlist              /wishlist             (series the user wants to read, not yet collected)
+Pinjaman Saya (My Loans)         /my-loans
+Direktori (Directory)             /directory            (find & follow other users with public profiles)
+Tiket (Tickets)                 /tickets
 ```
 
-Global Search (⌘K/Ctrl+K, atau search bar di header desktop / icon di mobile) tersedia di semua halaman user — cari judul di Katalog/Koleksiku atau navigasi cepat. Tombol ganti bahasa (id/en/ja) dan ThemeSwitcher (Light/Dark/System) ada bersebelahan di sidebar footer.
+Global Search (⌘K/Ctrl+K, or the header search bar on desktop / icon on mobile) is available on all user pages: search titles in Catalog/My Collection or navigate quickly. The language switch button (id/en/ja) and the ThemeSwitcher (Light/Dark/System) sit side by side in the sidebar footer.
 
-Profil publik (`/u/{username-atau-id}`) **tidak ada di sidebar** — diakses lewat Direktori, link share, atau langsung dari URL. Bisa diakses tanpa login (lihat §2 Guest Flow).
+The public profile (`/u/{username-or-id}`) is **not in the sidebar**; it is reached through the Directory, share links, or directly from the URL. It can be accessed without login (see §2 Guest Flow).
 
 ---
 
 ## 2. Auth Flows
 
-### Login — Modal Pilihan Cara Login
+### Login — Login Method Modal
 ```
-Landing page → klik tombol "Login" (header atau hero)
-  └─ LoginMethodDialog terbuka — 2 pilihan setara:
-        ├─ "Login dengan Yado" → lanjut ke Login SSO di bawah
-        └─ "Login dengan Email" → form email inline di modal yang sama
-              → lanjut ke Login dengan Email (Magic Link) di bawah
+Landing page → click the "Login" button (header or hero)
+  └─ LoginMethodDialog opens — 2 equal options:
+        ├─ "Login dengan Yado" (Login with Yado) → continues to SSO Login below
+        └─ "Login dengan Email" (Login with Email) → inline email form in the same modal
+              → continues to Login with Email (Magic Link) below
 ```
 
-Dialog yang sama juga jadi tempat nanti fitur "Tambah Akun" (multi-account, direncanakan — lihat backlog) dipasang.
+The same dialog will later also host the "Tambah Akun" (Add Account) feature (multi-account, planned; see backlog).
 
-### Login SSO (Yado)
+### SSO Login (Yado)
 ```
 GET /auth/redirect
-  └─ Redirect ke Yado dengan PKCE code_challenge
-        └─ User login di Yado (di luar Malas)
-              └─ Redirect balik ke GET /auth/callback
-                    ├─ Tukar code → token, ambil klaim user (sso_id, name, username, email, avatar)
-                    ├─ User baru → dibuat otomatis (role default `user`)
-                    ├─ User lama → data di-update dari klaim SSO terbaru (name/username/email/avatar
-                    │   ikut ter-refresh — satu-satunya jalur yang men-sync ulang profil)
-                    └─ Session dibuat → redirect berdasarkan role:
+  └─ Redirect to Yado with a PKCE code_challenge
+        └─ User logs in at Yado (outside Malas)
+              └─ Redirect back to GET /auth/callback
+                    ├─ Exchange code → token, fetch user claims (sso_id, name, username, email, avatar)
+                    ├─ New user → created automatically (default role `user`)
+                    ├─ Existing user → data updated from the latest SSO claims (name/username/email/avatar
+                    │   get refreshed; the only path that re-syncs the profile)
+                    └─ Session created → redirect based on role:
                           ├─ admin / super_admin → /admin/dashboard
                           └─ user → /dashboard
 ```
 
-Tidak ada form register/password lokal — semua akun (termasuk admin) dikelola lewat SSO. Login dengan Email (di bawah) adalah opsi kedua yang setara, bukan pengganti.
+There is no local register/password form; all accounts (including admins) are managed through SSO. Login with Email (below) is an equal second option, not a replacement.
 
-### Guest Access — Profil Publik
+### Guest Access — Public Profile
 ```
-GET /u/{username-atau-id}  (di luar grup middleware 'auth', jadi diakses tanpa login)
+GET /u/{username-or-id}  (outside the 'auth' middleware group, so accessed without login)
   └─ ProfileController@show
         ├─ Viewer null (guest) → is_guest = true, is_owner = false, is_following = false
-        └─ Viewer login → is_owner cek $viewer->id === $user->id, is_following cek relasi Follow
+        └─ Viewer logged in → is_owner checks $viewer->id === $user->id, is_following checks the Follow relation
 
 Frontend (Profile/Show.tsx):
-  ├─ is_guest = true  → render PublicShell (header minimal "Malas" + tombol Login yang buka
-  │                      LoginMethodDialog, tanpa sidebar)
-  │                      Grid koleksi user: cover + judul saja, TIDAK bisa diklik ke /catalog/{slug}
-  │                      (karena katalog butuh login). Tombol Follow diganti link "Login untuk follow".
-  └─ is_guest = false → render UserLayout normal, koleksi bisa diklik, tombol Follow aktif
+  ├─ is_guest = true  → renders PublicShell (minimal "Malas" header + a Login button that opens
+  │                      LoginMethodDialog, no sidebar)
+  │                      The user's collection grid: cover + title only, NOT clickable to /catalog/{slug}
+  │                      (because the catalog requires login). The Follow button is replaced by a "Login untuk follow" (Log in to follow) link.
+  └─ is_guest = false → renders the normal UserLayout, collection is clickable, Follow button active
 ```
 
-Route `follow`/`unfollow`/`/directory` tetap di dalam grup middleware `auth` — guest bisa lihat profil tapi tidak bisa follow atau akses direktori tanpa login.
+The `follow`/`unfollow`/`/directory` routes stay inside the `auth` middleware group; guests can view profiles but cannot follow or access the directory without logging in.
 
-### Login dengan Email (Magic Link)
+### Login with Email (Magic Link)
 
-Dulu dibangun sebagai fallback darurat ("SSO nggak bisa diakses?", link kecil tersembunyi) —
-sekarang dipromosikan jadi opsi login harian yang setara SSO, dipilih dari `LoginMethodDialog`.
-Mekanisme backend-nya tidak berubah sama sekali, cuma cara masuknya.
+Originally built as an emergency fallback ("Can't reach SSO?", a small hidden link),
+now promoted to an everyday login option equal to SSO, chosen from `LoginMethodDialog`.
+The backend mechanism is unchanged; only the entry point changed.
 
 ```
-LoginMethodDialog → pilih "Login dengan Email" → form email inline di modal
-  (atau langsung ke halaman mandiri GET /auth/fallback — link ini tetap ada,
-   dipakai juga sebagai basis untuk CLI sso:emergency-login)
+LoginMethodDialog → choose "Login dengan Email" → inline email form in the modal
+  (or go directly to the standalone page GET /auth/fallback — this link still exists,
+   and is also used as the basis for the CLI sso:emergency-login)
         └─ POST /auth/fallback (throttle:5,10)
-              ├─ Email cocok user yang ada DAN mail_settings terkonfigurasi
-              │     └─ Terbit SsoFallbackToken (hash SHA-256, TTL 15 menit, single-use)
-              │           └─ Kirim SsoFallbackLoginMail lewat Resend
-              │                 ├─ Kirim gagal (API key salah, provider down) → ditangkap
-              │                 │     try/catch, dicatat ke ActivityLog, TIDAK 500
-              │                 └─ Kirim sukses → ActivityLog 'auth.fallback_requested'
-              └─ Email tidak cocok / mail belum terkonfigurasi → skip diam-diam
-        Response SELALU pesan generik yang sama di kedua kasus (anti email-enumeration)
+              ├─ Email matches an existing user AND mail_settings is configured
+              │     └─ Issue SsoFallbackToken (SHA-256 hash, TTL 15 minutes, single-use)
+              │           └─ Send SsoFallbackLoginMail via Resend
+              │                 ├─ Send fails (wrong API key, provider down) → caught by
+              │                 │     try/catch, recorded to ActivityLog, NO 500
+              │                 └─ Send succeeds → ActivityLog 'auth.fallback_requested'
+              └─ Email doesn't match / mail not configured → silently skipped
+        The response is ALWAYS the same generic message in both cases (anti email-enumeration)
 
-User klik link di email → GET /auth/fallback/{token}
-  ├─ Token invalid/expired/sudah dipakai → 400, pesan "link tidak berlaku"
-  └─ Token valid → tandai used_at, Auth::login(), redirect sesuai role
-        (admin → /admin/dashboard, user → /dashboard) — SAMA seperti login SSO,
-        BEDANYA: profil (nama/avatar/username) TIDAK ikut ke-sync ulang (cuma SSO yang sync)
+User clicks the link in the email → GET /auth/fallback/{token}
+  ├─ Token invalid/expired/already used → 400, message "link tidak berlaku" (link is not valid)
+  └─ Token valid → set used_at, Auth::login(), redirect by role
+        (admin → /admin/dashboard, user → /dashboard); SAME as SSO login,
+        DIFFERENCE: the profile (name/avatar/username) is NOT re-synced (only SSO syncs)
 ```
 
-### Login Darurat via CLI
+### Emergency Login via CLI
 ```
-Operator SSH ke server → php artisan sso:emergency-login {role-atau-email}
-  └─ Resolve identifier: role keyword (super_admin/admin/user) atau email/username spesifik
-        ├─ Lebih dari satu kandidat (role sama) → pilihan interaktif
-        └─ Tidak ada yang cocok → error, exit 1
-  └─ Tampilkan siapa yang bakal dikasih akses → konfirmasi (y/N)
-        └─ Kalau "yes" → SsoFallbackToken::issueFor() (token sama persis dengan jalur email)
-              → print URL lengkap ke terminal, operator buka manual di browser
+Operator SSHes into the server → php artisan sso:emergency-login {role-or-email}
+  └─ Resolve identifier: role keyword (super_admin/admin/user) or a specific email/username
+        ├─ More than one candidate (same role) → interactive choice
+        └─ No match → error, exit 1
+  └─ Show who will be granted access → confirmation (y/N)
+        └─ If "yes" → SsoFallbackToken::issueFor() (exactly the same token as the email path)
+              → print the full URL to the terminal, the operator opens it manually in a browser
 ```
 
-Satu-satunya syarat: akses SSH ke server (setara akses langsung ke database) — tidak ada rute
-publik yang menerbitkan token semudah ini.
+The only requirement: SSH access to the server (equivalent to direct database access); there is no
+public route that issues tokens this easily.
 
-### Akses Route Terproteksi
+### Protected Route Access
 ```
-Request masuk
+Request comes in
   └─ auth middleware
-        ├─ Belum login → redirect /login
-        └─ Sudah login
+        ├─ Not logged in → redirect /login
+        └─ Logged in
               └─ EnsureNotBanned
-                    ├─ is_banned = true → redirect /banned (halaman info ban)
-                    └─ Lanjut
+                    ├─ is_banned = true → redirect /banned (ban info page)
+                    └─ Continue
                           └─ CheckMenuAccess
-                                ├─ is_maintenance = true (dan bukan admin)
-                                │     └─ render Maintenance.tsx dengan pesan
-                                ├─ Role tidak ada di role_access
+                                ├─ is_maintenance = true (and not admin)
+                                │     └─ render Maintenance.tsx with the message
+                                ├─ Role not in role_access
                                 │     └─ abort(403)
-                                └─ Lanjut ke Controller
+                                └─ Continue to the Controller
 ```
 
 ---
 
 ## 3. Admin Flows
 
-### F-A1: Tambah Series Manual
+### F-A1: Add Series Manually
 ```
-/admin/series → klik "Tambah Series"
-  └─ Form: judul, status, tipe, cover (upload), sinopsis, score, total volume
+/admin/series → click "Tambah Series" (Add Series)
+  └─ Form: title, status, type, cover (upload), synopsis, score, total volumes
         └─ Submit → SeriesController@store
-              ├─ Validasi gagal → kembali ke form, error inline per field
-              └─ Sukses → redirect /admin/series/{id} + toast "Series berhasil disimpan"
+              ├─ Validation fails → back to the form, inline error per field
+              └─ Success → redirect /admin/series/{id} + toast "Series berhasil disimpan" (Series saved successfully)
 ```
 
-### F-A2: Import Series dari AniList
+### F-A2: Import Series from AniList
 ```
-/admin/anilist → ketik judul di search
+/admin/anilist → type a title in search
   └─ Debounce → GET /admin/anilist/search?q=...
-        ├─ AniList timeout/error → tampil pesan error
-        └─ Hasil muncul sebagai card overlay (cover, judul, tahun, status, badge 18+ jika applicable)
-              └─ Klik "Import"
-                    ├─ AniList ID sudah ada → toast info "Sudah ada di katalog" + tombol lihat
-                    └─ Belum ada → import (genres/authors/themes/demographics ikut tersimpan)
-                          tetap di halaman search, tidak pindah halaman
+        ├─ AniList timeout/error → show an error message
+        └─ Results appear as overlay cards (cover, title, year, status, 18+ badge if applicable)
+              └─ Click "Import"
+                    ├─ AniList ID already exists → info toast "Sudah ada di katalog" (Already in the catalog) + view button
+                    └─ Not yet present → import (genres/authors/themes/demographics are saved too)
+                          stays on the search page, doesn't navigate away
 ```
 
-Sync ulang metadata AniList ke series yang sudah ada tersedia dari Popover "Sync AniList" di halaman Edit Series.
+Re-syncing AniList metadata to an existing series is available from the "Sync AniList" Popover on the Edit Series page.
 
-### F-A2b: Batch Import AniList (Genre/Tahun/Popularitas)
+### F-A2b: AniList Batch Import (Genre/Year/Popularity)
 ```
-/admin/anilist → pilih Genre (dropdown) dan/atau Tahun, atau nyalain "Urutkan Popularitas"
-  (boleh browse cuma dari filter ini, tanpa ketik judul apa pun)
+/admin/anilist → choose Genre (dropdown) and/or Year, or turn on "Urutkan Popularitas" (Sort by Popularity)
+  (you may browse using only these filters, without typing any title)
         └─ GET /admin/anilist?genre=...&year=...&sort_popularity=1
-              └─ Hasil muncul sebagai grid — item yang belum ada di katalog dapat checkbox
-                    di pojok kiri atas card
-        └─ Centang beberapa item (atau klik "Pilih Semua")
-              └─ Klik "Import N Series" → POST /admin/anilist/bulk-import { anilist_ids: [...] }
-                    └─ AniListService::getMangaBatch() — SATU request GraphQL (id_in) buat
-                        semua ID terpilih, bukan N request terpisah
-                          └─ Toast: "N series baru, M diperbarui" (+ "K gagal" kalau ada)
-Toggle "Sembunyikan yang sudah ada di katalog" — filter client-side pakai badge already_imported.
+              └─ Results appear as a grid; items not yet in the catalog get a checkbox
+                    in the top-left corner of the card
+        └─ Check several items (or click "Pilih Semua" / Select All)
+              └─ Click "Import N Series" → POST /admin/anilist/bulk-import { anilist_ids: [...] }
+                    └─ AniListService::getMangaBatch() — ONE GraphQL request (id_in) for
+                        all selected IDs, not N separate requests
+                          └─ Toast: "N series baru, M diperbarui" (N new series, M updated) (+ "K gagal" (K failed) if any)
+The toggle "Sembunyikan yang sudah ada di katalog" (Hide those already in the catalog) filters client-side using the already_imported badge.
 ```
 
-### F-A3: Kelola Volume
+### F-A3: Manage Volumes
 ```
-/admin/series/{id} (halaman detail series)
-  └─ Tab "Volume" → daftar volume
-        ├─ Tambah volume → form inline
+/admin/series/{id} (series detail page)
+  └─ "Volume" tab → volume list
+        ├─ Add volume → inline form
         ├─ Edit volume → /admin/volumes/{id}/edit
-        ├─ Hapus volume → konfirmasi dialog
-        └─ Generate otomatis (jika status = finished & total_volumes diset)
-              └─ Tombol "Generate (N)" → buat volume 1 s/d total_volumes yang belum ada
+        ├─ Delete volume → confirmation dialog
+        └─ Auto-generate (if status = finished & total_volumes is set)
+              └─ "Generate (N)" button → creates volumes 1 through total_volumes that don't exist yet
 ```
 
 ### F-A4: Menu Management
 ```
-/admin/menus → tabel daftar semua menu
-  └─ Per baris ada toggle:
-        ├─ Visible (tampil/tidak di sidebar user)
-        └─ Maintenance (aktif/tidak maintenance mode)
-  └─ Klik "Edit" → form: label, icon, sort_order, role_access, maintenance_message
-        └─ Save → CheckMenuAccess middleware langsung pakai data baru
+/admin/menus → table listing all menus
+  └─ Each row has toggles:
+        ├─ Visible (shown/not shown in the user sidebar)
+        └─ Maintenance (maintenance mode on/off)
+  └─ Click "Edit" → form: label, icon, sort_order, role_access, maintenance_message
+        └─ Save → the CheckMenuAccess middleware immediately uses the new data
 ```
 
 ### F-A5: Ban User
 ```
-/admin/users → klik user
-  └─ /admin/users/{id} → tombol "Ban User"
-        └─ Modal: isi alasan ban
-              └─ Konfirmasi → UserController@ban
-                    └─ User logout otomatis + tidak bisa login sampai di-unban
+/admin/users → click a user
+  └─ /admin/users/{id} → "Ban User" button
+        └─ Modal: enter the ban reason
+              └─ Confirm → UserController@ban
+                    └─ The user is logged out automatically + cannot log in until unbanned
 ```
 
-### F-A6: Buat Pengumuman
+### F-A6: Create an Announcement
 ```
-/admin/announcements → klik "Buat Pengumuman"
-  └─ Form: title, body (markdown editor), type, tanggal mulai-selesai
+/admin/announcements → click "Buat Pengumuman" (Create Announcement)
+  └─ Form: title, body (markdown editor), type, start-end date
         └─ Submit → AnnouncementController@store
-              └─ Langsung tampil di dashboard semua user yang aktif
+              └─ Immediately shown on the dashboard of all active users
 ```
 
-### F-A7: Import Series dari RanobeDB (Light Novel)
+### F-A7: Import Series from RanobeDB (Light Novel)
 ```
-/admin/ranobedb → ketik judul di search
+/admin/ranobedb → type a title in search
   └─ Debounce → GET /admin/ranobedb/search?q=...
-        ├─ RanobeDB timeout/error → tampil pesan error
-        └─ Hasil muncul sebagai card overlay (cover, judul, tahun)
-              └─ Klik hasil → GET /admin/ranobedb/detail (preview lengkap: authors, illustrators
-              │                terpisah, genres/themes/demographics dari tags[].ttype)
-                    └─ Klik "Import"
-                          ├─ ranobedb_id sudah ada → toast info "Sudah ada di katalog" + tombol lihat
-                          └─ Belum ada → import (authors/illustrators/genres/themes/demographics
-                                tersimpan terpisah; tanggal sentinel 99999999 di-treat sebagai "ongoing")
-                                tetap di halaman search, tidak pindah halaman
+        ├─ RanobeDB timeout/error → show an error message
+        └─ Results appear as overlay cards (cover, title, year)
+              └─ Click a result → GET /admin/ranobedb/detail (full preview: authors, illustrators
+              │                separately, genres/themes/demographics from tags[].ttype)
+                    └─ Click "Import"
+                          ├─ ranobedb_id already exists → info toast "Sudah ada di katalog" + view button
+                          └─ Not yet present → import (authors/illustrators/genres/themes/demographics
+                                saved separately; the date sentinel 99999999 is treated as "ongoing")
+                                stays on the search page, doesn't navigate away
 
-Halaman /admin/search-external menggabungkan hasil AniList + RanobeDB dalam satu pencarian.
-Sync ulang metadata RanobeDB ke series yang sudah ada tersedia dari Popover "Sync RanobeDB" di
-halaman Edit Series (sama pola dengan "Sync AniList").
+The /admin/search-external page combines AniList + RanobeDB results in one search.
+Re-syncing RanobeDB metadata to an existing series is available from the "Sync RanobeDB" Popover on
+the Edit Series page (same pattern as "Sync AniList").
 ```
 
-### F-A8: Reorder Menu Sidebar (Drag & Drop)
+### F-A8: Reorder Sidebar Menu (Drag & Drop)
 ```
-/admin/menus → drag salah satu baris menu (handle drag, @dnd-kit)
-  └─ Drop di posisi baru
+/admin/menus → drag one of the menu rows (drag handle, @dnd-kit)
+  └─ Drop at the new position
         └─ PATCH /admin/menus/reorder { ordered_ids: [...] }
-              └─ menus.sort_order di-update sesuai urutan baru
-                    └─ Sidebar user (dan admin) langsung ikut urutan baru di request berikutnya
-  └─ Tombol "Preview Sidebar User" → /admin/menus/user
-        └─ Render ulang sidebar persis seperti yang dilihat user, tanpa harus login sebagai user biasa
+              └─ menus.sort_order is updated to match the new order
+                    └─ The user (and admin) sidebar immediately follows the new order on the next request
+  └─ "Preview Sidebar User" button → /admin/menus/user
+        └─ Re-renders the sidebar exactly as the user sees it, without having to log in as a regular user
 ```
 
 ---
 
 ## 4. User Flows
 
-### F-U1: Browse Katalog
+### F-U1: Browse the Catalog
 
-`{slug}` di bawah adalah kolom asli `series.slug` (auto-generated dari judul, bukan sekadar
-notasi dokumentasi) — lihat `Series::generateUniqueSlug()`. URL lama berbasis UUID tetap jalan
-lewat fallback di `resolveRouteBinding()`.
+`{slug}` below is the real `series.slug` column (auto-generated from the title, not just a
+documentation notation); see `Series::generateUniqueSlug()`. Old UUID-based URLs still work
+through the fallback in `resolveRouteBinding()`.
 
 ```
-/catalog → grid series (cover, judul, status badge)
-  └─ Filter: status, tipe, search judul, genre (combobox searchable, multi-select, OR-match)
-        └─ Klik series → /catalog/{slug}
-              └─ Halaman detail:
-                    ├─ Info series (cover besar, sinopsis, score, status)
-                    ├─ Daftar volume (grid cover kecil, nomor volume)
-                    └─ Tombol "Tambah ke Koleksiku" → F-U2
+/catalog → series grid (cover, title, status badge)
+  └─ Filters: status, type, title search, genre (searchable combobox, multi-select, OR-match)
+        └─ Click a series → /catalog/{slug}
+              └─ Detail page:
+                    ├─ Series info (large cover, synopsis, score, status)
+                    ├─ Volume list (small cover grid, volume number)
+                    └─ "Tambah ke Koleksiku" (Add to My Collection) button → F-U2
 ```
 
-### F-U2: Tambah Series ke Koleksi
+### F-U2: Add a Series to the Collection
 ```
-Cara 1 — dari katalog:
-  /catalog/{slug} → klik "Tambah ke Koleksiku"
+Method 1 — from the catalog:
+  /catalog/{slug} → click "Tambah ke Koleksiku"
     └─ POST CollectionController@store { series_ids: [id] }
-          └─ Toast sukses / info jika sudah ada
+          └─ Success toast / info if it already exists
 
-Cara 2 — dari halaman koleksi:
-  /my-collection → klik "Tambah Series"
-    └─ Dialog: search series (debounce 350ms ke /catalog/search)
-          └─ Multi-select series (grid cover, checkmark overlay)
+Method 2 — from the collection page:
+  /my-collection → click "Tambah Series"
+    └─ Dialog: series search (350ms debounce to /catalog/search)
+          └─ Multi-select series (cover grid, checkmark overlay)
                 └─ Submit → CollectionController@store { series_ids: [...] }
-                      └─ Toast sukses + halaman refresh
+                      └─ Success toast + page refresh
 ```
 
-### F-U3: Catat Volume yang Dimiliki
+### F-U3: Record Owned Volumes
 ```
-/my-collection/{id} → halaman detail koleksi
-  └─ Grid volume yang sudah dicatat (volume_number, format badge, status loan)
-  └─ Tombol "Tambah Volume"
-        └─ Dialog: input CSV nomor volume (misal: "1,2,3,5") + pilih format
+/my-collection/{id} → collection detail page
+  └─ Grid of recorded volumes (volume_number, format badge, loan status)
+  └─ "Tambah Volume" (Add Volume) button
+        └─ Dialog: CSV input of volume numbers (e.g. "1,2,3,5") + choose format
               └─ Submit → CollectionController@storeVolumes
-                    └─ Toast: "N volume ditambahkan, M dilewati (sudah ada)"
-  └─ Hapus volume → konfirmasi dialog → CollectionController@destroyVolume
+                    └─ Toast: "N volume ditambahkan, M dilewati (sudah ada)" (N volumes added, M skipped (already exist))
+  └─ Delete volume → confirmation dialog → CollectionController@destroyVolume
 ```
 
-### F-U3b: Quick-Edit Jumlah Volume per Format (+/-)
+### F-U3b: Quick-Edit Volume Count per Format (+/-)
 ```
-/my-collection/{id} → info series → stepper "Jumlah dimiliki" (satu per format yang sudah
-                       punya ≥1 volume, mis. "Fisik: 12", "Ebook: 3")
-  └─ Klik "+" → PATCH CollectionController@quickAdjustCount { format, direction: add }
-        └─ Nomor volume berikutnya yang belum dimiliki sama sekali (lintas format) dibuat
-              └─ Toast sukses + tombol "Undo" (panggil ulang endpoint yang sama, direction: remove)
-  └─ Klik "-" → PATCH quickAdjustCount { format, direction: remove }
-        └─ Volume bernomor tertinggi DARI format itu dihapus
-              └─ Kalau volume tertinggi lagi dipinjamkan → tombol "-" didisable + tooltip,
-                 request tetap ditolak (info toast) kalau dipaksa lewat server langsung —
-                 tidak pernah diam-diam ganti target ke volume lain
-              └─ Toast sukses + tombol "Undo" → PATCH restoreVolumes
+/my-collection/{id} → series info → "Jumlah dimiliki" (Owned count) stepper (one per format that
+                       already has ≥1 volume, e.g. "Fisik: 12", "Ebook: 3")
+  └─ Click "+" → PATCH CollectionController@quickAdjustCount { format, direction: add }
+        └─ The next volume number not owned at all (across formats) is created
+              └─ Success toast + "Undo" button (calls the same endpoint again, direction: remove)
+  └─ Click "-" → PATCH quickAdjustCount { format, direction: remove }
+        └─ The highest-numbered volume OF that format is deleted
+              └─ If the highest volume is currently on loan → the "-" button is disabled + tooltip,
+                 the request is still rejected (info toast) if forced directly to the server;
+                 it never silently switches the target to another volume
+              └─ Success toast + "Undo" button → PATCH restoreVolumes
 ```
 
-### F-U4: Catat Peminjaman
+### F-U4: Record a Loan
 ```
-/my-collection/{id} → klik volume card yang belum dipinjam → "Pinjamkan"
-  └─ Modal: nama peminjam, tanggal pinjam, tanggal kembali (opsional), catatan
+/my-collection/{id} → click a volume card that isn't on loan → "Pinjamkan" (Lend)
+  └─ Modal: borrower name, loan date, return date (optional), notes
         └─ Submit → LoanController@store { collection_volume_id, ... }
-              └─ Volume card berubah status "Dipinjam"
-              └─ Muncul di /my-loans
+              └─ The volume card changes status to "Dipinjam" (On loan)
+              └─ Appears in /my-loans
 ```
 
-### F-U5: Tandai Dikembalikan
+### F-U5: Mark as Returned
 ```
-/my-loans → cari loan yang aktif
-  └─ Klik "Tandai Dikembalikan"
-        └─ Konfirmasi → LoanController@markReturned
-              └─ returned_at diisi → status berubah jadi "Dikembalikan"
-```
-
-### F-U6: Dismiss Pengumuman
-```
-Dashboard → announcement banner muncul
-  └─ Klik ✕ → POST /announcements/{id}/dismiss
-        └─ Banner hilang, tidak muncul lagi untuk user ini
+/my-loans → find the active loan
+  └─ Click "Tandai Dikembalikan" (Mark as Returned)
+        └─ Confirm → LoanController@markReturned
+              └─ returned_at is set → status changes to "Dikembalikan" (Returned)
 ```
 
-### F-U7: Tandai Volume Sudah Dibaca
+### F-U6: Dismiss an Announcement
 ```
-/my-collection/{id} → klik icon mata di volume card/baris
+Dashboard → announcement banner appears
+  └─ Click ✕ → POST /announcements/{id}/dismiss
+        └─ The banner disappears and does not appear again for this user
+```
+
+### F-U7: Mark a Volume as Read
+```
+/my-collection/{id} → click the eye icon on a volume card/row
   └─ PATCH CollectionController@toggleVolumeRead
-        └─ read_at diisi (atau di-null-kan jika toggle lagi) → volume greyed out
-              └─ Toast sukses dengan tombol "Undo" (panggil endpoint yang sama untuk revert)
-              └─ Indikator "Terakhir dibaca: Vol. N" di header ikut update
+        └─ read_at is set (or nulled if toggled again) → volume is greyed out
+              └─ Success toast with an "Undo" button (calls the same endpoint to revert)
+              └─ The "Terakhir dibaca: Vol. N" (Last read: Vol. N) indicator in the header updates too
 
-Tandai semua sekaligus:
-  └─ Klik icon mata di sebelah kiri judul "Volume yang Dimiliki"
+Mark all at once:
+  └─ Click the eye icon to the left of the "Volume yang Dimiliki" (Owned Volumes) heading
         └─ PATCH CollectionController@markAllVolumesRead
-              └─ Semua volume yang belum dibaca → read_at = now()
-                    └─ Toast + tombol "Undo" → PATCH unmarkVolumesRead
-                          (hanya revert volume yang baru diubah aksi ini)
+              └─ All unread volumes → read_at = now()
+                    └─ Toast + "Undo" button → PATCH unmarkVolumesRead
+                          (only reverts the volumes changed by this action)
 
-Stepper progres baca (+/-) — alternatif cepat, khusus baca linear (berurutan vol 1 ke atas):
-/my-collection/{id} → info series → stepper "Progres baca"
-  └─ Klik "+" → PATCH CollectionController@advanceReadProgress { direction: forward }
-        └─ Volume-belum-dibaca bernomor terendah → read_at = now()
-              └─ Toast + tombol "Undo" → PATCH toggleVolumeRead (endpoint yang sama dengan
-                 toggle manual, otomatis balik ke state sebelumnya)
-  └─ Klik "-" → PATCH advanceReadProgress { direction: backward }
-        └─ Volume-sudah-dibaca bernomor tertinggi → read_at = null
-  (Tidak menyentuh volume yang ditandai manual di luar urutan lewat icon mata — cuma
-   menggeser satu batas per klik)
-```
-
-### F-U8: Mode Hapus Volume
-```
-/my-collection/{id} → klik tombol "Hapus" di toolbar volume
-  └─ Masuk mode seleksi — icon mata di tiap volume berubah jadi checkbox
-        └─ Pilih volume → tombol "Hapus (N)" muncul
-              └─ Konfirmasi → CollectionController@destroyVolumes (bulk)
-        └─ Klik "Selesai" → keluar mode seleksi, checkbox kembali jadi icon mata
+Read progress stepper (+/-): a quick alternative, specifically for linear reading (in order from vol 1 up):
+/my-collection/{id} → series info → "Progres baca" (Reading progress) stepper
+  └─ Click "+" → PATCH CollectionController@advanceReadProgress { direction: forward }
+        └─ The lowest-numbered unread volume → read_at = now()
+              └─ Toast + "Undo" button → PATCH toggleVolumeRead (the same endpoint as the
+                 manual toggle, automatically returning to the previous state)
+  └─ Click "-" → PATCH advanceReadProgress { direction: backward }
+        └─ The highest-numbered read volume → read_at = null
+  (Doesn't touch volumes marked manually out of order via the eye icon; it only
+   shifts one boundary per click)
 ```
 
-### F-U9: Review & Rating Pribadi
+### F-U8: Volume Delete Mode
 ```
-/my-collection/{id} → card "Review & Rating Pribadi"
-  └─ Geser slider (-10 s/d +10) + isi komentar
-        └─ Klik "Simpan Review" → PATCH CollectionController@updateReview
-              └─ Toast sukses, nilai tersimpan (personal_rating, personal_review)
+/my-collection/{id} → click the "Hapus" (Delete) button in the volume toolbar
+  └─ Enter selection mode — the eye icon on each volume turns into a checkbox
+        └─ Select volumes → a "Hapus (N)" button appears
+              └─ Confirm → CollectionController@destroyVolumes (bulk)
+        └─ Click "Selesai" (Done) → exit selection mode, checkboxes turn back into eye icons
+```
+
+### F-U9: Personal Review & Rating
+```
+/my-collection/{id} → "Review & Rating Pribadi" (Personal Review & Rating) card
+  └─ Drag the slider (-10 to +10) + enter a comment
+        └─ Click "Simpan Review" (Save Review) → PATCH CollectionController@updateReview
+              └─ Success toast, values saved (personal_rating, personal_review)
 ```
 
 ### F-U10: Global Search
 ```
-Klik search bar di header (atau ⌘K / Ctrl+K dari halaman manapun)
-  └─ Dialog Command terbuka → ketik query
-        ├─ < 2 karakter → hanya tampil navigasi statis (fuzzy-match dari cmdk)
-        └─ ≥ 2 karakter → debounce 300ms → GET /search?q=...
-              └─ Hasil dikelompokkan: Navigasi, Koleksiku, Katalog
-                    └─ Klik salah satu → router.visit ke halaman terkait, dialog tertutup
+Click the search bar in the header (or ⌘K / Ctrl+K from any page)
+  └─ Command dialog opens → type a query
+        ├─ < 2 characters → shows only static navigation (fuzzy-matched by cmdk)
+        └─ ≥ 2 characters → 300ms debounce → GET /search?q=...
+              └─ Results grouped: Navigation, My Collection, Catalog
+                    └─ Click one → router.visit to the related page, dialog closes
 ```
 
 ### F-U11: Wishlist
 ```
-/catalog/{slug} atau /catalog → klik "Tambah ke Wishlist"
+/catalog/{slug} or /catalog → click "Tambah ke Wishlist" (Add to Wishlist)
   └─ POST WishlistController@store { series_id }
-        └─ Toast sukses / info jika sudah ada di wishlist
+        └─ Success toast / info if it's already in the wishlist
 
-/wishlist → grid series yang di-wishlist
-  └─ Klik "Hapus" → WishlistController@destroy
-        └─ Toast + tombol "Undo" → PATCH WishlistController@restore
-  └─ Klik "Tambah ke Koleksiku" langsung dari card wishlist → sama alur dengan F-U2
+/wishlist → grid of wishlisted series
+  └─ Click "Hapus" (Delete) → WishlistController@destroy
+        └─ Toast + "Undo" button → PATCH WishlistController@restore
+  └─ Click "Tambah ke Koleksiku" directly from a wishlist card → same flow as F-U2
 ```
 
-### F-U12: Profil Publik & Follow
+### F-U12: Public Profile & Follow
 ```
-Opt-in tampilkan profil (di Settings):
-/settings → toggle "Profil Publik"
+Opt in to show the profile (in Settings):
+/settings → "Profil Publik" (Public Profile) toggle
   └─ PATCH SettingsController@updateProfileVisibility
-        └─ is_profile_public tersimpan → profil bisa diakses di /u/{username-atau-id}
+        └─ is_profile_public saved → the profile can be accessed at /u/{username-or-id}
 
-Follow user lain:
-/directory (butuh login) atau /u/{user} → klik "Follow"
+Follow another user:
+/directory (requires login) or /u/{user} → click "Follow"
   └─ POST ProfileController@follow { user }
-        └─ Tombol berubah "Unfollow", follower_count bertambah
-  └─ Klik "Unfollow" → DELETE ProfileController@unfollow
+        └─ The button changes to "Unfollow", follower_count increases
+  └─ Click "Unfollow" → DELETE ProfileController@unfollow
 
-Lihat profil orang lain (guest atau login) → lihat §2 Guest Access — Profil Publik untuk
-perbedaan tampilan guest vs user login.
+Viewing someone else's profile (guest or logged in): see §2 Guest Access — Public Profile for
+the difference between the guest and logged-in views.
 ```
 
-### F-U13: Selera Genre (AI Funfact)
+### F-U13: Genre Taste (AI Funfact)
 ```
-Dashboard → card "Selera Genre"
-  ├─ Word cloud genre dihitung dari distribusi genre koleksi user
+Dashboard → "Selera Genre" (Genre Taste) card
+  ├─ Genre word cloud computed from the genre distribution of the user's collection
   └─ Funfact text:
         ├─ Provider = puter (default)
-        │     └─ Auto-generate saat halaman load pertama kali / koleksi bertambah signifikan:
-        │           needs_auto_generate = true dari backend → frontend panggil window.puter.ai.chat()
-        │                 └─ Hasil dikirim balik → POST dashboard.funfact.auto-save → tersimpan
-        │     └─ Klik "Generate Ulang" (manual, dibatasi kuota mingguan)
-        │           └─ Sama alur client-side → POST dashboard.funfact.regenerate
-        │                 ├─ Kuota habis → toast info, tombol disabled sampai window reset
-        │                 └─ Berhasil → funfact baru tersimpan & tampil
-        │     └─ Client-side generate gagal → POST dashboard.funfact.report-error (log ke ActivityLog)
-        └─ Provider = gemini/openai/claude (dikonfigurasi admin)
-              └─ Generate terjadi server-side di AiFunfactService
-                    ├─ HTTP 429 dari provider → AiRateLimitException → fallback text, kuota TIDAK terpotong
-                    └─ Sukses → funfact tersimpan seperti biasa
+        │     └─ Auto-generate on first page load / when the collection grows significantly:
+        │           needs_auto_generate = true from the backend → frontend calls window.puter.ai.chat()
+        │                 └─ Result sent back → POST dashboard.funfact.auto-save → saved
+        │     └─ Click "Generate Ulang" (Regenerate) (manual, limited by weekly quota)
+        │           └─ Same client-side flow → POST dashboard.funfact.regenerate
+        │                 ├─ Quota exhausted → info toast, button disabled until the window resets
+        │                 └─ Success → new funfact saved & shown
+        │     └─ Client-side generation fails → POST dashboard.funfact.report-error (logged to ActivityLog)
+        └─ Provider = gemini/openai/claude (configured by admin)
+              └─ Generation happens server-side in AiFunfactService
+                    ├─ HTTP 429 from the provider → AiRateLimitException → fallback text, quota is NOT consumed
+                    └─ Success → funfact saved as usual
 ```
 
-### F-U14: Ganti Bahasa
+### F-U14: Change Language
 ```
-Klik tombol bahasa di sidebar footer (sebelah ThemeSwitcher) — atau kartu "Bahasa" di Settings
-  └─ Popover: pilih id / en / ja
-        └─ i18n.changeLanguage(value) — UI berubah instan tanpa reload
-        └─ PATCH settings.locale.update { locale } → users.locale tersimpan
-              └─ Request berikutnya, App::setLocale() server-side ikut bahasa baru
-                    (pesan validasi, paginator Laravel bawaan ikut berubah juga)
+Click the language button in the sidebar footer (next to the ThemeSwitcher), or the "Bahasa" card in Settings
+  └─ Popover: choose id / en / ja
+        └─ i18n.changeLanguage(value) — UI changes instantly without reload
+        └─ PATCH settings.locale.update { locale } → users.locale saved
+              └─ On the next request, server-side App::setLocale() follows the new language
+                    (Laravel's built-in validation and paginator messages change too)
 ```
 
-### F-U15: Ganti Tema
+### F-U15: Change Theme
 ```
-Klik ThemeSwitcher di sidebar footer (sebelah tombol bahasa) — atau kartu "Tema" di Settings
-  └─ Popover: pilih Light / Dark / System
-        └─ Update lokal instan (localStorage + resolvedTheme via matchMedia kalau System)
-        └─ Kalau login: PATCH settings.theme.update { theme } → users.theme tersimpan
-        └─ Kalau guest: skip persist ke server, cukup localStorage
-  System: live-update kalau preferensi OS berubah selagi app terbuka (matchMedia listener)
+Click the ThemeSwitcher in the sidebar footer (next to the language button), or the "Tema" (Theme) card in Settings
+  └─ Popover: choose Light / Dark / System
+        └─ Instant local update (localStorage + resolvedTheme via matchMedia if System)
+        └─ If logged in: PATCH settings.theme.update { theme } → users.theme saved
+        └─ If guest: skip persisting to the server, localStorage is enough
+  System: live-updates if the OS preference changes while the app is open (matchMedia listener)
 ```
 
 ---
@@ -475,32 +477,32 @@ Klik ThemeSwitcher di sidebar footer (sebelah tombol bahasa) — atau kartu "Tem
 ## 5. Maintenance Mode Flow
 
 ```
-Admin set menu "Katalog" ke is_maintenance = true
-  └─ User yang akses /catalog:
-        └─ CheckMenuAccess → is_maintenance = true, user bukan admin
+Admin sets the "Katalog" menu to is_maintenance = true
+  └─ A user who accesses /catalog:
+        └─ CheckMenuAccess → is_maintenance = true, user is not admin
               └─ render Maintenance.tsx
-                    ├─ Ikon maintenance
-                    ├─ Pesan: "Katalog sedang dalam pemeliharaan. Coba lagi nanti."
-                    │   (atau pesan custom dari maintenance_message di tabel menus)
-                    └─ Tombol "Kembali ke Dashboard"
+                    ├─ Maintenance icon
+                    ├─ Message: "Katalog sedang dalam pemeliharaan. Coba lagi nanti." (The catalog is under maintenance. Try again later.)
+                    │   (or a custom message from maintenance_message in the menus table)
+                    └─ "Kembali ke Dashboard" (Back to Dashboard) button
 
-Admin yang akses /catalog:
-  └─ CheckMenuAccess → is_maintenance = true, TAPI user adalah admin
-        └─ Lanjut normal ke halaman
-        └─ Ada badge/banner kecil "Mode Maintenance Aktif" di top bar sebagai reminder
+An admin who accesses /catalog:
+  └─ CheckMenuAccess → is_maintenance = true, BUT the user is an admin
+        └─ Continues normally to the page
+        └─ A small "Mode Maintenance Aktif" (Maintenance Mode Active) badge/banner in the top bar as a reminder
 ```
 
 ---
 
 ## 6. Error States
 
-| Kondisi | Tampilan |
-|---------|---------|
-| 403 Forbidden | Halaman error: "Kamu tidak punya akses ke halaman ini" |
-| 404 Not Found | Halaman error: "Halaman tidak ditemukan" |
-| Maintenance | Halaman maintenance dengan pesan custom |
-| User di-ban | Halaman: "Akunmu dinonaktifkan. Hubungi admin." |
-| AniList/RanobeDB API error | Toast/pesan error (tidak crash halaman) |
-| Upload gagal | Error inline di field upload |
-| AI Funfact rate limit (429) | Fallback ke teks default, kuota generate-ulang manual tidak terpotong |
-| AI Funfact generate gagal (client-side) | Toast error + dilaporkan ke ActivityLog (kategori `ai`), tidak crash dashboard |
+| Condition | Display |
+|-----------|---------|
+| 403 Forbidden | Error page: "Kamu tidak punya akses ke halaman ini" (You don't have access to this page) |
+| 404 Not Found | Error page: "Halaman tidak ditemukan" (Page not found) |
+| Maintenance | Maintenance page with a custom message |
+| User banned | Page: "Akunmu dinonaktifkan. Hubungi admin." (Your account is deactivated. Contact an admin.) |
+| AniList/RanobeDB API error | Toast/error message (the page doesn't crash) |
+| Upload failed | Inline error on the upload field |
+| AI Funfact rate limit (429) | Falls back to default text, manual regenerate quota is not consumed |
+| AI Funfact generation failed (client-side) | Error toast + reported to ActivityLog (category `ai`), the dashboard doesn't crash |

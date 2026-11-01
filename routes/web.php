@@ -57,20 +57,20 @@ Route::get('/', function () {
 Route::get('/auth/redirect', [SsoController::class, 'redirect'])->name('sso.redirect');
 Route::get('/auth/callback', [SsoController::class, 'callback'])->name('sso.callback');
 
-// Login via email (magic link) — opsi login setara SSO (dipilih dari modal login), bukan cuma
-// jalur darurat. Verifikasi identitas lewat magic link sekali-pakai ke email yang sudah
-// tersinkron dari SSO, bukan password lokal. Profil (nama/avatar/username) cuma ikut ke-sync
-// pas login lewat SSO — user yang selalu pakai email nggak dapat update profil otomatis.
+// Email login (magic link): a login option equal to SSO (chosen from the login modal), not just an
+// emergency route. Identity is verified through a one-time magic link sent to the email already
+// synced from SSO, not a local password. Profile (name/avatar/username) is only synced
+// on SSO login, so users who always log in by email do not get automatic profile updates.
 Route::get('/auth/fallback', [SsoFallbackController::class, 'show'])->name('sso.fallback.show');
 Route::post('/auth/fallback', [SsoFallbackController::class, 'send'])
     ->middleware('throttle:5,10')
     ->name('sso.fallback.send');
 Route::get('/auth/fallback/{token}', [SsoFallbackController::class, 'consume'])->name('sso.fallback.consume');
 Route::middleware('auth')->group(function () {
-    // "Keluar dari semua akun" — logout total, termasuk redirect ke SSO buat destroy sesi di sana.
+    // "Log out of all accounts": full logout, including a redirect to SSO to destroy the session there.
     Route::post('/logout', [SsoController::class, 'logout'])->name('logout');
-    // Multi-account switching (session-based, lihat AccountLinkService) — kepake semua user,
-    // bukan cuma admin.
+    // Multi-account switching (session-based, see AccountLinkService), available to all users,
+    // not just admins.
     Route::post('/accounts/switch', [AccountController::class, 'switch'])->name('accounts.switch');
     Route::post('/accounts/logout-current', [AccountController::class, 'logoutCurrent'])->name('accounts.logoutCurrent');
 });
@@ -80,13 +80,13 @@ Route::get('/banned', function () {
     return Inertia::render('Auth/Banned');
 })->middleware('auth')->name('banned');
 
-// Profil publik (opt-in) — sengaja di luar grup 'auth' supaya non-login juga bisa lihat
-// (read-only, tanpa akses ke fitur internal seperti Katalog). Lihat ProfileController::show().
+// Public profile (opt-in), deliberately outside the 'auth' group so logged-out users can also view it
+// (read-only, no access to internal features such as the Catalog). See ProfileController::show().
 Route::get('/u/{user}', [ProfileController::class, 'show'])->name('profile.show');
 
-// Grup koleksi publik (opt-in per grup) — sengaja di luar grup 'auth', sama alasannya dengan
-// profil publik di atas. Visibilitas (publik/privat) dicek manual di controller, bukan lewat
-// middleware, karena guest juga boleh lihat kalau grupnya public. Lihat CollectionGroupController::show().
+// Public collection groups (opt-in per group), deliberately outside the 'auth' group, same reason as
+// the public profile above. Visibility (public/private) is checked manually in the controller, not via
+// middleware, because guests may also view a group when it is public. See CollectionGroupController::show().
 Route::get('/collection-groups/{group}', [CollectionGroupController::class, 'show'])->name('collection.groups.show');
 
 // User area
@@ -97,12 +97,12 @@ Route::middleware(['auth', 'not_banned', 'check.menu'])->group(function () {
     Route::get('/dashboard/genre-detail', [UserDashboardController::class, 'genreDetail'])->name('dashboard.genre-detail');
     Route::get('/search', [SearchController::class, 'search'])->name('search');
 
-    // Katalog (baca saja)
+    // Catalog (read-only)
     Route::get('/catalog', [UserSeriesController::class, 'index'])->name('catalog.index');
     Route::get('/catalog/search', [UserSeriesController::class, 'search'])->name('catalog.search');
     Route::get('/catalog/{series}', [UserSeriesController::class, 'show'])->name('catalog.show');
 
-    // Koleksi pribadi
+    // Personal collection
     Route::get('/my-collection', [CollectionController::class, 'index'])->name('collection.index');
     Route::post('/my-collection', [CollectionController::class, 'store'])->name('collection.store');
     Route::patch('/my-collection/undo-store', [CollectionController::class, 'undoStore'])->name('collection.undo-store');
@@ -125,8 +125,8 @@ Route::middleware(['auth', 'not_banned', 'check.menu'])->group(function () {
     Route::patch('/my-collection/{collection}/volumes/read-progress', [CollectionController::class, 'advanceReadProgress'])->name('collection.volumes.readProgress');
     Route::patch('/my-collection/{collection}/volumes/quick-count', [CollectionController::class, 'quickAdjustCount'])->name('collection.volumes.quickCount');
 
-    // Grup koleksi custom (ala MDList MangaDex) — many-to-many, path terpisah dari
-    // /my-collection/{collection} biar nggak tabrakan sama route model binding.
+    // Custom collection groups (like MangaDex MDList), many-to-many, separate path from
+    // /my-collection/{collection} so they do not clash with route model binding.
     Route::get('/collection-groups', [CollectionGroupController::class, 'index'])->name('collection.groups.index');
     Route::post('/collection-groups', [CollectionGroupController::class, 'store'])->name('collection.groups.store');
     Route::patch('/collection-groups/{group}', [CollectionGroupController::class, 'update'])->name('collection.groups.update');
@@ -136,32 +136,32 @@ Route::middleware(['auth', 'not_banned', 'check.menu'])->group(function () {
     Route::delete('/collection-groups/{group}/items/{collection}', [CollectionGroupController::class, 'removeItem'])->name('collection.groups.items.remove');
     Route::patch('/collection-groups/{group}/items/undo-remove', [CollectionGroupController::class, 'undoRemoveItem'])->name('collection.groups.items.undoRemove');
 
-    // Pinjaman user
+    // User loans
     Route::get('/my-loans', [LoanController::class, 'index'])->name('loans.index');
     Route::post('/my-collection/{collection}/loans', [LoanController::class, 'store'])->name('loans.store');
     Route::put('/loans/{loan}/return', [LoanController::class, 'markReturned'])->name('loans.return');
 
-    // Dismiss pengumuman
+    // Dismiss announcements
     Route::post('/announcements/{announcement}/dismiss', [AnnouncementController::class, 'dismiss'])->name('announcements.dismiss');
 
-    // Tiket ke superadmin
+    // Tickets to the superadmin
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
 
-    // Wishlist — series yang belum dimiliki tapi mau dibaca
+    // Wishlist: series not owned yet but wanted to read
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist', [WishlistController::class, 'store'])->name('wishlist.store');
     Route::delete('/wishlist/{wishlistItem}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
     Route::patch('/wishlist/restore', [WishlistController::class, 'restore'])->name('wishlist.restore');
 
-    // Direktori pengguna (butuh login, untuk follow)
+    // User directory (login required, for following)
     Route::get('/directory', [ProfileController::class, 'directory'])->name('directory.index');
     Route::post('/u/{user}/follow', [ProfileController::class, 'follow'])->name('profile.follow');
     Route::delete('/u/{user}/follow', [ProfileController::class, 'unfollow'])->name('profile.unfollow');
 
-    // Pengaturan akun (semua role) — profil dikelola di SSO, ini hanya tampilan read-only
+    // Account settings (all roles): the profile is managed in SSO, this is a read-only view
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::patch('/settings/profile-visibility', [SettingsController::class, 'updateProfileVisibility'])->name('settings.profile-visibility.update');
     Route::patch('/settings/locale', [SettingsController::class, 'updateLocale'])->name('settings.locale.update');
@@ -217,20 +217,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_banned', 'check
     Route::get('/menus/{menu}/edit', [AdminMenuController::class, 'edit'])->name('menus.edit');
     Route::match(['put', 'patch'], '/menus/{menu}', [AdminMenuController::class, 'update'])->name('menus.update');
 
-    // Log aktivitas admin
+    // Admin activity log
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 
-    // Kuota AI Funfact
+    // AI Funfact quota
     Route::get('/funfact-quota', [GenreFunfactController::class, 'index'])->name('funfact-quota.index');
     Route::patch('/funfact-quota/{user}/reset', [GenreFunfactController::class, 'reset'])->name('funfact-quota.reset');
     Route::patch('/funfact-quota/{user}/override', [GenreFunfactController::class, 'override'])->name('funfact-quota.override');
 
-    // Tiket dari user
+    // User tickets
     Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');
     Route::patch('/tickets/{ticket}/respond', [AdminTicketController::class, 'respond'])->name('tickets.respond');
 
-    // Pengaturan — satu halaman, tab Penyimpanan + Database + Konten (super_admin only, ditegakkan lewat role_access menu + Policy)
+    // Settings: one page, Storage + Database + Content tabs (super_admin only, enforced via menu role_access + Policy)
     Route::get('/settings', [StorageSettingController::class, 'edit'])->name('settings.index');
     Route::put('/settings/storage', [StorageSettingController::class, 'update'])->name('settings.storage.update');
     Route::post('/settings/storage/test', [StorageSettingController::class, 'testConnection'])->name('settings.storage.test');

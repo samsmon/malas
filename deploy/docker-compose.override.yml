@@ -1,7 +1,7 @@
-# Override buat lokal/dev — otomatis ke-load kalau file ini ada di folder yang sama
-# dengan docker-compose.yml (docker compose pakai override.yml secara default).
-# Beda dengan docker-compose.yml (prod): source code di-bind-mount (bukan hasil build),
-# APP_DEBUG diasumsikan true, ditambah service Vite buat HMR.
+# Local/dev override — loaded automatically when this file sits in the same folder
+# as docker-compose.yml (docker compose uses override.yml by default).
+# Unlike docker-compose.yml (prod): source code is bind-mounted (not the built image),
+# APP_DEBUG is assumed true, and a Vite service is added for HMR.
 services:
   app:
     build:

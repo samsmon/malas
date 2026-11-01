@@ -39,9 +39,9 @@ class HandleInertiaRequests extends Middleware
                 fn () => SiteSetting::first()?->blur_adult_content ?? true,
             );
 
-            // Multi-account switching — daftar akun lain yang sudah ke-link di session ini
-            // (bukan permanen di DB, lihat AccountLinkService). Di-fetch fresh dari DB tiap
-            // request supaya nama/avatar yang ditampilkan selalu up to date.
+            // Multi-account switching: the list of other accounts already linked in this session
+            // (not permanent in the DB, see AccountLinkService). Fetched fresh from the DB on every
+            // request so the displayed name/avatar is always up to date.
             $linkedIds = collect(session('linked_account_ids', []))
                 ->reject(fn ($id) => $id === $user->id)
                 ->values();

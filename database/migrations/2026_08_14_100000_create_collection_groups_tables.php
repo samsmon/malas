@@ -8,10 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // MDList/MangaDex-style custom list — many-to-many, satu manga bisa masuk lebih dari satu
-        // grup. Gantiin pendekatan lama (collections.group_name, satu string per koleksi) yang
-        // ternyata salah semantik: user butuh grup sebagai objek pertama (nama, bisa diisi macam-
-        // macam manga dari koleksinya), bukan sekadar label tunggal per koleksi.
+        // MDList/MangaDex-style custom list: many-to-many, one manga can be in more than one
+        // group. Replaces the old approach (collections.group_name, one string per collection), which
+        // turned out to be semantically wrong: users need the group as a first-class object (a name, can hold
+        // all sorts of manga from their collection), not just a single label per collection.
         Schema::create('collection_groups', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
@@ -19,11 +19,11 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Pivot murni — sengaja TIDAK pakai uuid('id') primary key kayak tabel lain. attach()/
-        // syncWithoutDetaching() Eloquent insert baris pivot lewat query builder mentah (bukan lewat
-        // model event), jadi HasUuids nggak sempat ngisi kolom id-nya — bikin NOT NULL constraint
-        // violation. Composite primary key (collection_group_id, collection_id) itu pola standar
-        // buat pivot table murni, jadi masalahnya nggak ada sama sekali.
+        // Pure pivot: deliberately NO uuid('id') primary key like the other tables. Eloquent's attach()/
+        // syncWithoutDetaching() insert pivot rows through the raw query builder (not through
+        // model events), so HasUuids never gets a chance to fill the id column, causing a NOT NULL constraint
+        // violation. A composite primary key (collection_group_id, collection_id) is the standard pattern
+        // for a pure pivot table, so there is no problem at all.
         Schema::create('collection_group_items', function (Blueprint $table) {
             $table->foreignUuid('collection_group_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('collection_id')->constrained()->cascadeOnDelete();

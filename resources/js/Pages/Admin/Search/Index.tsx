@@ -151,7 +151,7 @@ export default function ExternalSearchIndex({ results, filters, errors }: Props)
                 {t('anilist.searchHint')}
             </p>
 
-            {/* Error states (satu sumber gagal tidak menghentikan sumber lain) */}
+            {/* Error states (one source failing does not stop the others) */}
             {(errors.anilist || errors.ranobedb) && (
                 <div className="mb-6 space-y-2">
                     {errors.anilist && (

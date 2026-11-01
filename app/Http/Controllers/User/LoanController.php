@@ -57,7 +57,7 @@ class LoanController extends Controller
         ]);
 
         $cv = CollectionVolume::findOrFail($data['collection_volume_id']);
-        abort_if($cv->collection_id !== $collection->id, 403, 'Volume tidak ada di koleksi ini.');
+        abort_if($cv->collection_id !== $collection->id, 403, 'This volume is not in the collection.');
 
         $alreadyLoaned = $cv->activeLoans()->exists();
 
@@ -72,7 +72,7 @@ class LoanController extends Controller
 
         ActivityLog::record(
             'loan.create',
-            auth()->user()->name." mencatat pinjaman volume {$cv->volume_number} ke {$data['borrower_name']}.",
+            auth()->user()->name." recorded a loan of volume {$cv->volume_number} to {$data['borrower_name']}.",
             $loan,
         );
 
@@ -87,7 +87,7 @@ class LoanController extends Controller
 
         ActivityLog::record(
             'loan.mark_returned',
-            auth()->user()->name." menandai pinjaman ke {$loan->borrower_name} sudah dikembalikan.",
+            auth()->user()->name." marked the loan to {$loan->borrower_name} as returned.",
             $loan,
         );
 

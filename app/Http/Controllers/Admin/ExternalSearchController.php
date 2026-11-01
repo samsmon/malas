@@ -12,8 +12,8 @@ use Inertia\Response;
 
 class ExternalSearchController extends Controller
 {
-    // Sama seperti AniListController::mapType() — diduplikasi (bukan diekstrak jadi shared
-    // helper) supaya controller sumber AniList/RanobeDB yang sudah ada tidak perlu diubah.
+    // Same as AniListController::mapType(), duplicated (not extracted into a shared
+    // helper) so the existing AniList/RanobeDB source controllers do not need to change.
     private const MANGA_FORMAT_MAP = [
         'NOVEL' => 'novel',
         'ONE_SHOT' => 'one_shot',

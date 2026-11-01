@@ -87,7 +87,7 @@ class VolumeController extends Controller
 
         ActivityLog::record(
             'volume.delete',
-            "Menghapus volume #{$volume->volume_number} dari series \"{$volume->series->title_romaji}\".",
+            "Deleted volume #{$volume->volume_number} from series \"{$volume->series->title_romaji}\".",
             $volume
         );
 
@@ -108,7 +108,7 @@ class VolumeController extends Controller
         $volumeModel->restore();
         ActivityLog::record(
             'volume.restore',
-            "Memulihkan volume #{$volumeModel->volume_number} dari series \"{$volumeModel->series->title_romaji}\"."
+            "Restored volume #{$volumeModel->volume_number} from series \"{$volumeModel->series->title_romaji}\"."
         );
 
         return redirect()->back()->with('success', __('flash.volumes.restored'));

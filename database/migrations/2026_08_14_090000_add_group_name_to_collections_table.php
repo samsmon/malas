@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('collections', function (Blueprint $table) {
-            // Grouping/label bebas per user (mis. "Rak Kamar", "Rak Kantor") — sengaja string bebas,
-            // bukan tabel terpisah, biar nggak butuh CRUD grup sendiri. Filter di UI dedup dari
-            // nilai yang sudah ada per user.
+            // Free-form per-user grouping/label (e.g. "Bedroom Shelf", "Office Shelf"). Deliberately a free string,
+            // not a separate table, so no group CRUD is needed. The UI filter dedupes from
+            // values that already exist per user.
             $table->string('group_name', 100)->nullable()->after('condition');
         });
     }

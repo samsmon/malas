@@ -416,9 +416,9 @@ export default function CollectionShow({ collection, series, volumes, last_read_
 
     const avFormat = avWatch('format');
 
-    // Prefill + auto-open "Tambah Volume" kalau datang dari badge "volume kurang" di Koleksiku
-    // (?addVolumes=4,6-7,9-12) — bersihin query param-nya setelahnya biar refresh/back nggak
-    // ke-trigger ulang.
+    // Prefill + auto-open "Add Volume" when arriving from the "missing volumes" badge in My Collection
+    // (?addVolumes=4,6-7,9-12) — clear the query param afterwards so refresh/back doesn't
+    // trigger it again.
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const prefill = params.get('addVolumes');
@@ -840,10 +840,10 @@ export default function CollectionShow({ collection, series, volumes, last_read_
                                     v.read_at && 'opacity-50 grayscale',
                                 )}
                             >
-                                {/* Nggak ada cover per-volume (dihapus, lihat CHANGELOG) — daripada nyisain
-                                    placeholder kosong (angka doang di tengah), tengahnya sekalian dijadiin
-                                    tombol toggle baca/belum (icon mata gede), biar area yang tadinya nganggur
-                                    langsung berguna. */}
+                                {/* There is no per-volume cover (removed, see CHANGELOG) — rather than leaving an
+                                    empty placeholder (just a number in the middle), the center doubles as a
+                                    read/unread toggle button (big eye icon), so the otherwise idle area
+                                    is useful. */}
                                 <div
                                     className={cn(
                                         'relative flex aspect-[2/3] items-center justify-center bg-muted',

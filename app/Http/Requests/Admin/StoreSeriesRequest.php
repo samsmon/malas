@@ -35,9 +35,9 @@ class StoreSeriesRequest extends FormRequest
     {
         return [
             'cover.max' => 'Ukuran cover maksimal 10 MB.',
-            'cover.mimes' => 'Format cover harus JPG, PNG, atau WebP.',
-            'cover.uploaded' => 'Cover gagal diunggah. Coba file yang lebih kecil dari 10 MB.',
-            'published_to.after_or_equal' => 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.',
+            'cover.mimes' => 'Cover format must be JPG, PNG, or WebP.',
+            'cover.uploaded' => 'Cover upload failed. Try a file smaller than 10 MB.',
+            'published_to.after_or_equal' => 'The end date must not be earlier than the start date.',
             'score.max' => 'Skor maksimal 10.',
         ];
     }

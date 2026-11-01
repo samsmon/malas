@@ -55,7 +55,7 @@ class GenreFunfactController extends Controller
 
         ActivityLog::record(
             'admin.funfact_quota.reset',
-            "{$request->user()->name} me-reset kuota generate funfact untuk {$user->name}.",
+            "{$request->user()->name} reset the funfact generation quota for {$user->name}.",
             $user,
         );
 
@@ -75,8 +75,8 @@ class GenreFunfactController extends Controller
         $funfact->save();
 
         $description = $validated['quota_override'] === null
-            ? "{$request->user()->name} mengembalikan batas kuota funfact {$user->name} ke default."
-            : "{$request->user()->name} mengubah batas kuota funfact {$user->name} menjadi {$validated['quota_override']}x/minggu.";
+            ? "{$request->user()->name} restored the funfact quota limit of {$user->name} to default."
+            : "{$request->user()->name} changed the funfact quota limit of {$user->name} to {$validated['quota_override']}x/week.";
 
         ActivityLog::record('admin.funfact_quota.override', $description, $user);
 

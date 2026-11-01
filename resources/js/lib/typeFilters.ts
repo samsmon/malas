@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 
 /**
- * Opsi Segmented Control tipe series, dipakai di semua halaman list series/koleksi
- * (lihat aturan "filter tipe wajib" di CLAUDE.md). Satu sumber terjemahan, bukan
- * di-duplikasi per halaman.
+ * Series type Segmented Control options, used on all series/collection list pages
+ * (see the "type filter required" rule in CLAUDE.md). A single source of translations,
+ * not duplicated per page.
  */
 export function useTypeFilterOptions(): { value: string; label: string }[] {
     const { t } = useTranslation();

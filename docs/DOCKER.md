@@ -1,42 +1,42 @@
 # Malas — Deployment via Docker (Postgres)
 
-> Metode ketiga selain [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) (native/bare-metal, MySQL). Jalur ini pakai **PostgreSQL** sebagai database (biar konsisten sama microservice lain), dikemas lewat Docker Compose, dan **generik** — cuma butuh Docker Engine + Compose plugin, jadi jalan di LXC/VM Proxmox, VPS mana pun, atau laptop buat testing lokal. Script-nya **tidak** menyentuh Proxmox API sama sekali.
+> The third method besides [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) (native/bare-metal, MySQL). This path uses **PostgreSQL** as the database (to stay consistent with the other microservices), packaged via Docker Compose, and is **generic**: it only needs Docker Engine + the Compose plugin, so it runs on a Proxmox LXC/VM, any VPS, or a laptop for local testing. The script does **not** touch the Proxmox API at all.
 
 ---
 
-## Kapan pakai metode ini vs `deploy.sh` (native)?
+## When to use this method vs `deploy.sh` (native)?
 
 | | Native (`deploy/deploy.sh`) | Docker (`deploy/deploy-docker.sh`) |
 |---|---|---|
 | Database | MySQL 8+ | **PostgreSQL 16** |
-| Install ke | Host langsung (systemd, Nginx, PHP-FPM) | Container (app, nginx, db, queue) |
-| Cocok untuk | VPS/EC2/Azure biasa | Homelab/Proxmox, atau mau konsisten sama microservice lain yang sudah pakai Postgres/Docker |
-| Isolasi | Tidak — semua share OS host | Ya — tiap service kontainer sendiri |
+| Installs to | Directly on the host (systemd, Nginx, PHP-FPM) | Containers (app, nginx, db, queue) |
+| Suited for | Ordinary VPS/EC2/Azure | Homelab/Proxmox, or when you want consistency with other microservices already on Postgres/Docker |
+| Isolation | No, everything shares the host OS | Yes, each service has its own container |
 
-Kalau kamu sudah pernah deploy native (MySQL/SQLite) dan mau pindah ke sini, lihat bagian [Migrasi Data dari Instalasi Lama](#migrasi-data-dari-instalasi-lama) — **jangan** langsung `deploy-docker.sh` di atas data lama, itu bikin instalasi Postgres baru yang kosong.
+If you have deployed natively before (MySQL/SQLite) and want to move here, see [Migrating Data from an Old Installation](#migrating-data-from-an-old-installation). **Do not** run `deploy-docker.sh` straight on top of old data; that creates a new, empty Postgres installation.
 
 ---
 
-## Prasyarat
+## Prerequisites
 
-- Docker Engine + Docker Compose plugin (`docker compose version` harus jalan)
-- LXC/VM Proxmox (atau host Linux apa pun) dengan akses internet buat pull base image
-- Repo Malas sudah di-clone
-- Credentials SSO Yado (boleh dikosongkan dulu kalau mau pakai Login via Email saja)
+- Docker Engine + Docker Compose plugin (`docker compose version` must work)
+- A Proxmox LXC/VM (or any Linux host) with internet access to pull base images
+- The Malas repo cloned
+- Yado SSO credentials (can be left empty for now if you only want to use Login via Email)
 
-Kalau LXC Proxmox belum ada Docker:
+If the Proxmox LXC does not have Docker yet:
 
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $(whoami)
-# logout/login ulang biar grup docker kepakai
+# log out/in again so the docker group takes effect
 ```
 
-> **Catatan LXC Proxmox**: kalau pakai LXC (bukan VM), pastikan container **unprivileged** tetap dikasih izin nested container (`Options → Features → Nesting` = enabled) di config Proxmox, atau Docker daemon di dalamnya bisa gagal start. VM biasa tidak butuh langkah ini.
+> **Proxmox LXC note**: if you use an LXC (not a VM), make sure an **unprivileged** container is still granted nested container permission (`Options → Features → Nesting` = enabled) in the Proxmox config, or the Docker daemon inside it may fail to start. A regular VM does not need this step.
 
 ---
 
-## Deploy Baru (Fresh Install)
+## Fresh Install
 
 ```bash
 git clone https://github.com/USERNAME/malas.git /opt/malas
@@ -44,47 +44,47 @@ cd /opt/malas
 bash deploy/deploy-docker.sh
 ```
 
-Script akan:
-1. Cek `docker` dan `docker compose` tersedia
-2. Setup `deploy/.env` dari `deploy/.env.docker.example` (nanya domain, port, password Postgres, SSO credentials)
+The script will:
+1. Check that `docker` and `docker compose` are available
+2. Set up `deploy/.env` from `deploy/.env.docker.example` (asks for domain, port, Postgres password, SSO credentials)
 3. Generate `APP_KEY`
-4. Build image (`deploy/Dockerfile`, multi-stage: Node build → Composer → PHP-FPM)
-5. Jalankan stack: `app` (PHP-FPM), `queue` (worker), `nginx`, `db` (Postgres 16)
-6. Tunggu Postgres healthy, lalu migrate + seed menu
-7. Tanya apakah mau migrasi data dari instalasi lama (lihat bagian di bawah)
-8. Cache production (`config:cache`, `route:cache`, dst)
+4. Build the image (`deploy/Dockerfile`, multi-stage: Node build → Composer → PHP-FPM)
+5. Start the stack: `app` (PHP-FPM), `queue` (worker), `nginx`, `db` (Postgres 16)
+6. Wait for Postgres to be healthy, then migrate + seed menus
+7. Ask whether you want to migrate data from an old installation (see the section below)
+8. Production caching (`config:cache`, `route:cache`, etc.)
 
-Setelah selesai, app bisa diakses di `http://<host>:<APP_PORT>` (default port `8080`).
+When finished, the app can be reached at `http://<host>:<APP_PORT>` (default port `8080`).
 
-### Struktur file (`deploy/`)
+### File structure (`deploy/`)
 
 ```
 deploy/
   Dockerfile                   — multi-stage build (frontend, vendor, runtime)
-  docker-compose.yml           — stack production (app, queue, nginx, db)
-  docker-compose.override.yml  — override buat dev lokal (bind mount + Vite HMR), auto-load
-  nginx.conf                   — reverse proxy PHP-FPM
-  .env.docker.example          — template env buat compose (DB_CONNECTION=pgsql)
-  deploy-docker.sh             — deploy Docker dari nol
-  update-docker.sh             — update kode di deploy Docker yang sudah jalan
-  deploy.sh / update.sh        — deploy/update native (lihat DEPLOYMENT.md)
+  docker-compose.yml           — production stack (app, queue, nginx, db)
+  docker-compose.override.yml  — override for local dev (bind mount + Vite HMR), auto-loaded
+  nginx.conf                   — PHP-FPM reverse proxy
+  .env.docker.example          — env template for compose (DB_CONNECTION=pgsql)
+  deploy-docker.sh             — Docker deploy from scratch
+  update-docker.sh             — update code in an already running Docker deploy
+  deploy.sh / update.sh        — native deploy/update (see DEPLOYMENT.md)
 ```
 
 ---
 
-## Testing / Development Lokal
+## Local Testing / Development
 
-`docker-compose.override.yml` otomatis ke-load bareng `docker-compose.yml` (perilaku default Docker Compose) kalau dijalankan dari dalam folder `deploy/`:
+`docker-compose.override.yml` is loaded automatically together with `docker-compose.yml` (default Docker Compose behavior) when run from inside the `deploy/` folder:
 
 ```bash
 cd deploy
-cp .env.docker.example .env   # isi manual, atau jalankan deploy-docker.sh biasa
+cp .env.docker.example .env   # fill in manually, or just run deploy-docker.sh
 docker compose up -d
 ```
 
-Override ini bind-mount source code (bukan hasil build) dan nambah service `vite` buat HMR (`http://localhost:5173`). Cocok buat coba-coba lokal tanpa install PHP/Node di host sama sekali.
+This override bind-mounts the source code (not the build output) and adds a `vite` service for HMR (`http://localhost:5173`). Good for local experimenting without installing PHP/Node on the host at all.
 
-Untuk stack production murni (tanpa override), jalankan eksplisit dengan `-f`:
+For a pure production stack (without the override), run it explicitly with `-f`:
 
 ```bash
 docker compose -f docker-compose.yml up -d
@@ -92,117 +92,117 @@ docker compose -f docker-compose.yml up -d
 
 ---
 
-## Migrasi Data dari Instalasi Lama
+## Migrating Data from an Old Installation
 
-Format backup `.sql` dari halaman Admin Settings (`DatabaseBackupController`) sudah driver-aware (SQLite/MySQL/Postgres — beda quote identifier dan beda cara toggle FK check), tapi cara paling robust buat pindah antar **tiga** engine berbeda sekaligus adalah command baru `malas:migrate-data` — nyalin data baris-per-baris lewat query builder Laravel (bukan lewat teks SQL), jadi nggak peduli sama sekali soal beda dialect SQL antar SQLite/MySQL/Postgres.
+The `.sql` backup format from the Admin Settings page (`DatabaseBackupController`) is already driver-aware (SQLite/MySQL/Postgres: different identifier quoting and different ways to toggle FK checks), but the most robust way to move between **three** different engines at once is the new `malas:migrate-data` command. It copies data row by row through the Laravel query builder (not via SQL text), so it does not care at all about SQL dialect differences between SQLite/MySQL/Postgres.
 
-**Kapan dipakai:** kamu sudah punya instalasi lama (native, SQLite dev atau MySQL prod) dan mau pindah ke Postgres di Docker ini tanpa kehilangan data.
+**When to use:** you already have an old installation (native, SQLite dev or MySQL prod) and want to move to the Postgres in this Docker setup without losing data.
 
-### Cara 1 — lewat `deploy-docker.sh` (paling gampang)
+### Option 1 — via `deploy-docker.sh` (easiest)
 
-Script fresh-install di atas otomatis nanya "Ada data lama yang mau disalin?" di step terakhir sebelum caching. Jawab `y`, isi nama connection sumber (`sqlite` atau `mysql`), dan pastikan config koneksi sumber itu ada di `.env` container `app` (kalau sumbernya MySQL server terpisah, tambahkan env `DB_HOST`/`DB_USERNAME`/dst untuk koneksi `mysql` sebelum lanjut — Laravel sudah otomatis punya connection `mysql` di `config/database.php`, tinggal diisi).
+The fresh-install script above automatically asks "Any old data to copy?" in the last step before caching. Answer `y`, enter the source connection name (`sqlite` or `mysql`), and make sure that source connection's config exists in the `app` container's `.env` (if the source is a separate MySQL server, add the `DB_HOST`/`DB_USERNAME`/etc. env vars for the `mysql` connection before continuing; Laravel already has a `mysql` connection in `config/database.php`, it just needs to be filled in).
 
-### Cara 2 — manual, kapan saja setelah stack jalan
+### Option 2 — manual, any time after the stack is running
 
 ```bash
 cd deploy
 docker compose exec app php artisan malas:migrate-data --from=sqlite --to=pgsql --truncate
 ```
 
-Opsi:
-- `--from` — nama connection sumber (`sqlite`, `mysql`, atau connection lain yang terdaftar di `config/database.php`)
-- `--to` — nama connection tujuan, default `pgsql`
-- `--truncate` — kosongkan dulu tabel tujuan sebelum menyalin (aman dipakai berkali-kali/re-run kalau migrasi gagal di tengah jalan)
-- `--chunk=500` — jumlah baris per batch insert, naikkan kalau datanya besar
+Options:
+- `--from`: the source connection name (`sqlite`, `mysql`, or another connection registered in `config/database.php`)
+- `--to`: the destination connection name, default `pgsql`
+- `--truncate`: empty the destination tables before copying (safe to use repeatedly/re-run if the migration fails midway)
+- `--chunk=500`: number of rows per insert batch, raise it if the data is large
 
-Command ini menyalin **semua** tabel (termasuk `users`, beda dengan backup `.sql` biasa yang sengaja skip `users` karena dikelola SSO) — cocok buat cutover penuh ke database baru. Jalankan `php artisan migrate` dulu di sisi tujuan (sudah otomatis dilakukan `deploy-docker.sh`) supaya semua tabel ada sebelum menyalin.
+This command copies **all** tables (including `users`, unlike the regular `.sql` backup which deliberately skips `users` because they are managed by SSO), which suits a full cutover to the new database. Run `php artisan migrate` on the destination side first (already done automatically by `deploy-docker.sh`) so all tables exist before copying.
 
-**Setelah migrasi data selesai**, cek manual jumlah baris tabel penting (`series`, `collections`, `users`) di kedua sisi sebelum menganggap cutover selesai dan mematikan instalasi lama.
+**After the data migration finishes**, manually check the row counts of key tables (`series`, `collections`, `users`) on both sides before considering the cutover complete and shutting down the old installation.
 
 ---
 
-## Update Kode
+## Updating the Code
 
 ```bash
 cd /opt/malas
 bash deploy/update-docker.sh
 ```
 
-Melakukan `git pull`, rebuild image, restart container, jalankan migration baru (kalau ada), rebuild cache, restart queue worker — pola yang sama dengan `deploy/update.sh` versi native.
+Does a `git pull`, rebuilds the image, restarts the containers, runs new migrations (if any), rebuilds caches, and restarts the queue worker, the same pattern as the native `deploy/update.sh`.
 
 ---
 
-## HTTPS / Akses Domain Publik
+## HTTPS / Public Domain Access
 
-Sama seperti metode native (lihat [`docs/DEPLOYMENT.md`](DEPLOYMENT.md#setelah-deploy-akses-via-domain)) — nginx container cuma dengar di port HTTP (`APP_PORT`, default `8080`). Untuk HTTPS:
+Same as the native method (see [`docs/DEPLOYMENT.md`](DEPLOYMENT.md#after-deploy-access-via-domain)): the nginx container only listens on the HTTP port (`APP_PORT`, default `8080`). For HTTPS:
 
-- **Cloudflare Tunnel (rekomendasi, tanpa IP publik)**: install `cloudflared` di host (LXC/VM) — bukan di dalam container — arahkan tunnel ke `http://localhost:${APP_PORT}`.
-- **Certbot/reverse proxy lain di host**: kalau punya IP publik, taruh Nginx/Caddy/Traefik lain di host yang reverse-proxy ke `http://localhost:${APP_PORT}`, urus SSL di situ.
+- **Cloudflare Tunnel (recommended, no public IP)**: install `cloudflared` on the host (LXC/VM), not inside a container, and point the tunnel at `http://localhost:${APP_PORT}`.
+- **Certbot/another reverse proxy on the host**: if you have a public IP, put another Nginx/Caddy/Traefik on the host that reverse-proxies to `http://localhost:${APP_PORT}`, and handle SSL there.
 
-> **PENTING (Reverse Proxy / Cloudflare Tunnel & Mixed Content)**:
-> Saat aplikasi diakses via HTTPS melalui tunnel/reverse proxy sementara Nginx container mendengarkan via HTTP, konfigurasi `deploy/nginx.conf` **wajib** meneruskan parameter FastCGI HTTPS:
+> **IMPORTANT (Reverse Proxy / Cloudflare Tunnel & Mixed Content)**:
+> When the app is accessed over HTTPS through a tunnel/reverse proxy while the Nginx container listens over HTTP, the `deploy/nginx.conf` config **must** forward the FastCGI HTTPS parameters:
 > ```nginx
 > fastcgi_param HTTPS on;
 > fastcgi_param HTTP_X_FORWARDED_PROTO https;
 > ```
-> Tanpa parameter ini, Laravel dan library Ziggy di frontend akan mengasumsikan URL berbasis `http://`, sehingga browser memblokir request navigasi (sidebar / Cari Cepat `⌘K`) karena kebijakan *Mixed Content*.
+> Without these parameters, Laravel and the Ziggy library on the frontend will assume `http://`-based URLs, so the browser blocks navigation requests (sidebar / Quick Search `⌘K`) because of the *Mixed Content* policy.
 
 ---
 
 ## Troubleshooting
 
-### `docker compose` gagal, "Cannot connect to the Docker daemon"
+### `docker compose` fails, "Cannot connect to the Docker daemon"
 
-Docker service belum jalan atau user belum masuk grup `docker`:
+The Docker service is not running or the user is not in the `docker` group:
 ```bash
 sudo systemctl start docker
-sudo usermod -aG docker $(whoami)   # lalu logout/login ulang
+sudo usermod -aG docker $(whoami)   # then log out/in again
 ```
 
-### Database `db` tidak pernah "healthy"
+### The `db` database never becomes "healthy"
 
 ```bash
 docker compose logs db
 ```
-Password di `deploy/.env` (`DB_PASSWORD`) harus sudah terisi sebelum `db` pertama kali start — kalau container `db` sudah pernah dibuat dengan password lain, volume `db-data` menyimpan password lama. Hapus volume kalau memang mau reset total (**data hilang**):
+The password in `deploy/.env` (`DB_PASSWORD`) must be filled in before `db` starts for the first time. If the `db` container was ever created with a different password, the `db-data` volume keeps the old password. Delete the volume if you really want a total reset (**data is lost**):
 ```bash
 docker compose down -v
 ```
 
-### Error 500, cek log
+### Error 500, check the log
 
 ```bash
 docker compose exec app tail -n 50 storage/logs/laravel.log
 ```
 
-### Upload backup gagal (file besar)
+### Backup upload fails (large file)
 
-`upload_max_filesize`/`post_max_size` sudah dinaikkan ke 128M di image (`deploy/Dockerfile`) — kalau masih gagal, cek juga limit di reverse proxy depan nginx container (kalau ada).
+`upload_max_filesize`/`post_max_size` are already raised to 128M in the image (`deploy/Dockerfile`). If it still fails, also check the limit on any reverse proxy in front of the nginx container.
 
-### Storage/cover gambar tidak muncul
+### Storage/cover images don't show up
 
 ```bash
 docker compose exec app php artisan storage:link
 ```
-Symlink butuh permission tulis ke `public/` — sudah di-handle di `Dockerfile` (`chown` ke user `malas` non-root), tapi kalau pernah override image ini, pastikan `public/` owned oleh user yang menjalankan PHP-FPM.
+The symlink needs write permission on `public/`. This is already handled in the `Dockerfile` (`chown` to the non-root `malas` user), but if you have ever overridden this image, make sure `public/` is owned by the user running PHP-FPM.
 
-### Menu Sidebar & Cari Cepat (`⌘K`) Tidak Bisa Diklik (Mixed Content)
+### Sidebar Menu & Quick Search (`⌘K`) Can't Be Clicked (Mixed Content)
 
-- **Gejala**: Menu sidebar tidak merespons saat diklik, dialog Cari Cepat (`⌘K`) tidak dapat berpindah halaman, di console browser muncul pesan:
+- **Symptom**: Sidebar menus do not respond to clicks, the Quick Search (`⌘K`) dialog cannot navigate to other pages, and the browser console shows:
   `Mixed Content: The page at https://... was loaded over HTTPS, but requested an insecure XMLHttpRequest endpoint http://.... This request has been blocked.`
-- **Penyebab**: Ziggy di frontend me-render route dengan protokol `http://` karena Nginx lokal belum meneruskan status HTTPS ke PHP-FPM.
-- **Solusi**:
-  1. Pastikan file `deploy/nginx.conf` memuat:
+- **Cause**: Ziggy on the frontend renders routes with the `http://` protocol because the local Nginx does not forward the HTTPS status to PHP-FPM.
+- **Fix**:
+  1. Make sure `deploy/nginx.conf` contains:
      ```nginx
      fastcgi_param HTTPS on;
      fastcgi_param HTTP_X_FORWARDED_PROTO https;
      ```
-  2. Pastikan file `.env` memakai protokol HTTPS:
+  2. Make sure the `.env` file uses the HTTPS protocol:
      ```dotenv
      APP_URL=https://<domain>
      SSO_REDIRECT_URI=https://<domain>/auth/callback
      ```
-  3. Reload Nginx dan bersihkan cache:
+  3. Reload Nginx and clear the caches:
      ```bash
      docker compose exec nginx nginx -s reload
      docker compose exec app php artisan config:clear
@@ -210,12 +210,12 @@ Symlink butuh permission tulis ke `public/` — sudah di-handle di `Dockerfile` 
      docker compose exec app php artisan view:clear
      ```
 
-### Menu Admin & Sidebar Kosong Melompong
+### Admin Menu & Sidebar Completely Empty
 
-- **Gejala**: Setelah fresh deploy / migrasi database baru, sidebar tidak menampilkan menu atau menu admin hilang.
-- **Penyebab**: Navigasi Malas bersifat dinamis dari database (tabel `menus` dan `roles`). Jika database baru dimigrasikan tanpa seeding, tabel tersebut masih kosong.
-- **Solusi**:
-  Jalankan seeder role dan menu:
+- **Symptom**: After a fresh deploy / new database migration, the sidebar shows no menus or the admin menu is missing.
+- **Cause**: Malas navigation is dynamic from the database (`menus` and `roles` tables). If a new database is migrated without seeding, those tables are still empty.
+- **Fix**:
+  Run the role and menu seeders:
   ```bash
   docker compose exec app php artisan db:seed --class=RoleSeeder --force
   docker compose exec app php artisan db:seed --class=MenuSeeder --force
@@ -224,10 +224,10 @@ Symlink butuh permission tulis ke `public/` — sudah di-handle di `Dockerfile` 
 
 ### SSO Login Error 500 (`Invalid key supplied` / Passport)
 
-- **Gejala**: Saat klik login SSO, muncul error 500 atau pesan `LogicException: Invalid key supplied at CryptKey.php`.
-- **Penyebab**: Instance server SSO belum memiliki encryption keys Passport (`storage/oauth-private.key` dan `oauth-public.key`).
-- **Solusi**:
-  Di container server SSO (`sso-yado`), jalankan:
+- **Symptom**: When clicking SSO login, a 500 error or the message `LogicException: Invalid key supplied at CryptKey.php` appears.
+- **Cause**: The SSO server instance does not yet have Passport encryption keys (`storage/oauth-private.key` and `oauth-public.key`).
+- **Fix**:
+  In the SSO server container (`sso-yado`), run:
   ```bash
   docker compose exec app php artisan passport:keys
   ```

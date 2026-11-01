@@ -78,7 +78,7 @@ class TicketController extends Controller
 
         $ticket = auth()->user()->tickets()->create($request->validated());
 
-        ActivityLog::record('ticket.create', auth()->user()->name." membuat tiket \"{$ticket->subject}\".", $ticket);
+        ActivityLog::record('ticket.create', auth()->user()->name." created ticket \"{$ticket->subject}\".", $ticket);
 
         return redirect()->route('tickets.index')
             ->with('success', __('flash.tickets.created'));

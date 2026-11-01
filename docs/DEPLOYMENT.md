@@ -1,98 +1,98 @@
-# Malas — Panduan Deployment
+# Malas — Deployment Guide
 
-> Dokumen ini mencakup cara deploy Malas native (tanpa Docker) ke berbagai environment: **Local Server**, **AWS EC2**, dan **Azure VM**, menggunakan script otomatis maupun manual. Untuk deploy via Docker (Postgres, generik buat Proxmox LXC/VM atau Linux manapun), lihat [`docs/DOCKER.md`](DOCKER.md) — dokumen terpisah.
+> This document covers how to deploy Malas natively (without Docker) to various environments: **Local Server**, **AWS EC2**, and **Azure VM**, using either the automated script or manual steps. For deploying via Docker (Postgres, generic for Proxmox LXC/VM or any Linux), see [`docs/DOCKER.md`](DOCKER.md), a separate document.
 
 ---
 
-## Daftar Isi
+## Table of Contents
 
-- [Prasyarat](#prasyarat)
-- [Metode 1: Otomatis dengan deploy/deploy.sh](#metode-1-otomatis-dengan-deploydeploysh)
-- [Metode 2: Manual Step-by-Step](#metode-2-manual-step-by-step)
+- [Prerequisites](#prerequisites)
+- [Method 1: Automated with deploy/deploy.sh](#method-1-automated-with-deploydeploysh)
+- [Method 2: Manual Step-by-Step](#method-2-manual-step-by-step)
 - [Platform: AWS EC2](#platform-aws-ec2)
 - [Platform: Azure VM](#platform-azure-vm)
 - [Platform: Local Server (VPS / Bare Metal)](#platform-local-server-vps--bare-metal)
-- [Setelah Deploy: Akses via Domain](#setelah-deploy-akses-via-domain)
-- [Memperbarui Kode (deploy/update.sh)](#memperbarui-kode-deployupdatesh)
+- [After Deploy: Access via Domain](#after-deploy-access-via-domain)
+- [Updating the Code (deploy/update.sh)](#updating-the-code-deployupdatesh)
 - [Troubleshooting](#troubleshooting)
 
-> **Metode 3 (Docker, berbasis Postgres)** ada di dokumen terpisah: [`docs/DOCKER.md`](DOCKER.md).
+> **Method 3 (Docker, Postgres-based)** is in a separate document: [`docs/DOCKER.md`](DOCKER.md).
 
 ---
 
-## Prasyarat
+## Prerequisites
 
-Semua platform membutuhkan:
+All platforms require:
 
-| Komponen | Versi Minimum |
-|----------|--------------|
+| Component | Minimum Version |
+|-----------|-----------------|
 | Ubuntu Server | 24.04 LTS |
 | PHP | 8.2+ |
 | MySQL | 8.0+ |
 | Node.js | 20+ |
 | Composer | 2.x |
-| Nginx | terbaru |
-| Supervisor | terbaru — wajib untuk queue worker (migrasi storage, backup, dll) |
+| Nginx | latest |
+| Supervisor | latest; required for the queue worker (storage migration, backup, etc.) |
 
-Sebelum mulai, pastikan kamu punya:
-- Akses SSH ke server
-- Repo Malas sudah di-clone ke server
-- Credentials SSO Yado (`SSO_CLIENT_ID` dan `SSO_CLIENT_SECRET`)
-- (Opsional) Domain yang sudah diarahkan ke server
+Before you start, make sure you have:
+- SSH access to the server
+- The Malas repo cloned onto the server
+- Yado SSO credentials (`SSO_CLIENT_ID` and `SSO_CLIENT_SECRET`)
+- (Optional) A domain already pointed at the server
 
 ---
 
-## Metode 1: Otomatis dengan deploy/deploy.sh
+## Method 1: Automated with deploy/deploy.sh
 
-Cara tercepat. Satu script handle semuanya.
+The fastest way. One script handles everything.
 
-### Langkah-langkah
+### Steps
 
-**1. Clone repo ke server**
+**1. Clone the repo onto the server**
 
 ```bash
 git clone https://github.com/USERNAME/malas.git /var/www/malas
 cd /var/www/malas
 ```
 
-Kalau repo private, setup SSH key dulu:
+If the repo is private, set up an SSH key first:
 
 ```bash
-# Generate key (kalau belum ada)
+# Generate a key (if you don't have one)
 ssh-keygen -t ed25519 -C "server-deploy"
 cat ~/.ssh/id_ed25519.pub
-# Tambahkan output di atas ke GitHub → Settings → Deploy Keys
+# Add the output above to GitHub → Settings → Deploy Keys
 git clone git@github.com:USERNAME/malas.git /var/www/malas
 ```
 
-**2. Jalankan script**
+**2. Run the script**
 
 ```bash
 cd /var/www/malas
 bash deploy/deploy.sh
 ```
 
-Script akan:
+The script will:
 - Install PHP 8.2, MySQL 8, Nginx, Node 20, Composer, Supervisor
-- Membuat database dan user MySQL
-- Setup file `.env` (script akan bertanya domain, DB credentials, SSO credentials)
-- Jalankan `composer install`, `npm run build`
-- Migrasi database + seed menu
-- Konfigurasi Nginx otomatis
-- Konfigurasi queue worker (Supervisor) — dibutuhkan untuk job antrian seperti migrasi file storage otomatis saat driver diganti
-- Print instruksi untuk setup domain
+- Create the MySQL database and user
+- Set up the `.env` file (the script asks for the domain, DB credentials, SSO credentials)
+- Run `composer install`, `npm run build`
+- Migrate the database + seed menus
+- Configure Nginx automatically
+- Configure the queue worker (Supervisor), needed for queued jobs such as automatic storage file migration when the driver is changed
+- Print instructions for domain setup
 
-**3. Ikuti instruksi di akhir script**
+**3. Follow the instructions at the end of the script**
 
-Script akan print dua pilihan untuk akses via domain: Cloudflare Tunnel atau SSL langsung. Lihat bagian [Setelah Deploy](#setelah-deploy-akses-via-domain).
+The script prints two options for domain access: Cloudflare Tunnel or direct SSL. See the [After Deploy](#after-deploy-access-via-domain) section.
 
 ---
 
-## Metode 2: Manual Step-by-Step
+## Method 2: Manual Step-by-Step
 
-Gunakan ini kalau ingin kontrol penuh atau script gagal di tengah jalan.
+Use this if you want full control or the script failed midway.
 
-### 1. Install dependency sistem
+### 1. Install system dependencies
 
 ```bash
 sudo apt update
@@ -110,14 +110,14 @@ curl -sS https://getcomposer.org/installer | php
 sudo mv composer.phar /usr/local/bin/composer
 ```
 
-### 2. Clone repo
+### 2. Clone the repo
 
 ```bash
 git clone https://github.com/USERNAME/malas.git /var/www/malas
 cd /var/www/malas
 ```
 
-### 3. Konfigurasi MySQL
+### 3. Configure MySQL
 
 ```bash
 sudo mysql
@@ -131,20 +131,20 @@ FLUSH PRIVILEGES;
 EXIT;
 ```
 
-### 4. Setup .env
+### 4. Set up .env
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Nilai yang wajib diubah:
+Values that must be changed:
 
 ```env
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://domain-kamu.com
-APP_KEY=                          # akan di-generate di langkah berikutnya
+APP_KEY=                          # will be generated in the next step
 
 LOG_LEVEL=error
 
@@ -170,7 +170,7 @@ npm ci
 npm run build
 ```
 
-### 6. Generate key & migrasi
+### 6. Generate key & migrate
 
 ```bash
 php artisan key:generate
@@ -179,9 +179,9 @@ php artisan db:seed --class=MenuSeeder --force
 php artisan storage:link
 ```
 
-> Setelah deploy pertama kali, konfigurasi **Storage** (`/admin/settings` tab Storage), **AI** (tab AI — default provider `puter`, tidak butuh API key, cukup didiamkan kalau tidak mau pakai Gemini/OpenAI/Claude), dan **Email** (tab Email — API key Resend, dibutuhkan kalau mau fitur "Login Tanpa SSO" bisa mengirim magic link; kalau tidak diisi, fitur ini diam-diam tidak mengirim apa pun tanpa error) dilakukan lewat UI admin, bukan `.env`. Tidak ada env var tambahan yang wajib diisi untuk fitur i18n, wishlist, profil publik, RanobeDB, atau login tanpa SSO — semuanya jalan begitu migrasi selesai.
+> After the first deploy, configure **Storage** (`/admin/settings` Storage tab), **AI** (AI tab; the default provider is `puter` and needs no API key, so just leave it if you don't want Gemini/OpenAI/Claude), and **Email** (Email tab; the Resend API key, needed if you want the "Login Without SSO" feature to send magic links; if left empty, this feature silently sends nothing, without an error) through the admin UI, not `.env`. No additional env vars are required for i18n, wishlist, public profile, RanobeDB, or login without SSO; they all work once the migration finishes.
 
-### 7. Cache untuk production
+### 7. Cache for production
 
 ```bash
 php artisan config:cache
@@ -190,14 +190,14 @@ php artisan view:cache
 php artisan optimize
 ```
 
-### 8. Set permission
+### 8. Set permissions
 
 ```bash
 sudo chown -R www-data:www-data /var/www/malas/storage /var/www/malas/bootstrap/cache
 sudo chmod -R 775 /var/www/malas/storage /var/www/malas/bootstrap/cache
 ```
 
-### 9. Konfigurasi Nginx
+### 9. Configure Nginx
 
 ```bash
 sudo nano /etc/nginx/sites-available/malas
@@ -244,9 +244,9 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo systemctl enable nginx php8.2-fpm mysql
 ```
 
-### 10. Konfigurasi queue worker (Supervisor)
+### 10. Configure the queue worker (Supervisor)
 
-Wajib — job antrian (migrasi file storage otomatis saat driver diganti, dll) tidak akan pernah jalan tanpa worker aktif.
+Required: queued jobs (automatic storage file migration when the driver is changed, etc.) never run without an active worker.
 
 ```bash
 sudo nano /etc/supervisor/conf.d/malas-worker.conf
@@ -275,7 +275,7 @@ sudo supervisorctl update
 sudo supervisorctl start malas-worker:*
 ```
 
-Cek statusnya:
+Check its status:
 ```bash
 sudo supervisorctl status malas-worker:*
 ```
@@ -284,21 +284,21 @@ sudo supervisorctl status malas-worker:*
 
 ## Platform: AWS EC2
 
-### Setup Instance
+### Instance Setup
 
-1. Launch instance: **Ubuntu Server 24.04 LTS**, tipe `t3.small` (minimum) atau `t3.medium` (rekomendasi)
-2. Storage: minimal 20 GB GP3
-3. Security Group — buka port:
+1. Launch an instance: **Ubuntu Server 24.04 LTS**, type `t3.small` (minimum) or `t3.medium` (recommended)
+2. Storage: at least 20 GB GP3
+3. Security Group: open these ports:
 
-   | Port | Protokol | Source |
+   | Port | Protocol | Source |
    |------|----------|--------|
-   | 22 | TCP | IP kamu (untuk SSH) |
+   | 22 | TCP | Your IP (for SSH) |
    | 80 | TCP | 0.0.0.0/0 |
    | 443 | TCP | 0.0.0.0/0 |
 
-4. Download key pair `.pem`
+4. Download the `.pem` key pair
 
-### Koneksi ke Instance
+### Connect to the Instance
 
 ```bash
 chmod 400 key-pair.pem
@@ -315,38 +315,38 @@ bash deploy/deploy.sh
 
 ### Domain
 
-- Di AWS Route 53 atau DNS provider: buat **A record** yang mengarah ke Elastic IP EC2
-- Gunakan Elastic IP (bukan Public IP biasa) supaya IP tidak berubah saat instance restart
+- In AWS Route 53 or your DNS provider: create an **A record** pointing to the EC2 Elastic IP
+- Use an Elastic IP (not a regular Public IP) so the IP does not change when the instance restarts
 
 ```bash
-# Pasang Elastic IP dulu di AWS Console, lalu:
+# Attach the Elastic IP in the AWS Console first, then:
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d domain-kamu.com
 ```
 
-### Tips AWS
+### AWS Tips
 
-- Aktifkan **AWS Backup** atau snapshot EBS secara berkala
-- Pertimbangkan **RDS MySQL** untuk database production yang lebih handal (ganti `DB_HOST` di `.env` ke endpoint RDS)
-- Untuk file storage, sudah bisa pakai **S3** langsung — konfigurasi via halaman Admin → Penyimpanan
+- Enable **AWS Backup** or take EBS snapshots regularly
+- Consider **RDS MySQL** for a more reliable production database (change `DB_HOST` in `.env` to the RDS endpoint)
+- For file storage, you can already use **S3** directly; configure it via the Admin → Storage page
 
 ---
 
 ## Platform: Azure VM
 
-### Setup VM
+### VM Setup
 
-1. Buat VM: **Ubuntu Server 24.04 LTS**, size `B2s` (minimum) atau `B2ms` (rekomendasi)
-2. Disk: minimal 30 GB Premium SSD
-3. Buka port di **Networking → Inbound port rules**:
+1. Create a VM: **Ubuntu Server 24.04 LTS**, size `B2s` (minimum) or `B2ms` (recommended)
+2. Disk: at least 30 GB Premium SSD
+3. Open ports under **Networking → Inbound port rules**:
 
-   | Port | Protokol |
+   | Port | Protocol |
    |------|----------|
    | 22 | TCP |
    | 80 | TCP |
    | 443 | TCP |
 
-### Koneksi ke VM
+### Connect to the VM
 
 ```bash
 ssh azureuser@<VM_PUBLIC_IP>
@@ -362,35 +362,35 @@ bash deploy/deploy.sh
 
 ### Domain
 
-Di Azure DNS atau DNS provider eksternal: buat **A record** ke Public IP VM.
+In Azure DNS or an external DNS provider: create an **A record** to the VM's Public IP.
 
 ```bash
-# Pasang SSL
+# Install SSL
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d domain-kamu.com
 ```
 
-### Tips Azure
+### Azure Tips
 
-- Gunakan **Static Public IP** (bukan Dynamic) supaya IP tidak berubah
-- Untuk storage, bisa pakai **Azure Blob Storage** yang kompatibel S3 — konfigurasi via halaman Admin → Penyimpanan dengan endpoint Azure Blob
+- Use a **Static Public IP** (not Dynamic) so the IP does not change
+- For storage, you can use S3-compatible **Azure Blob Storage**; configure it via the Admin → Storage page with the Azure Blob endpoint
 
 ---
 
 ## Platform: Local Server (VPS / Bare Metal)
 
-Cocok untuk server di rumah / kantor yang terhubung ke internet, atau lab internal.
+Suitable for a server at home / the office connected to the internet, or an internal lab.
 
-### Jika punya IP publik
+### If you have a public IP
 
-Deploy sama seperti di atas, lalu setup domain:
+Deploy the same way as above, then set up the domain:
 ```bash
 sudo certbot --nginx -d domain-kamu.com
 ```
 
-### Jika tidak punya IP publik (NAT/ISP blokir port)
+### If you have no public IP (NAT/ISP blocks ports)
 
-Gunakan **Cloudflare Tunnel** — tidak perlu IP publik atau buka port router:
+Use **Cloudflare Tunnel**: no public IP or router port opening needed:
 
 ```bash
 # 1. Install cloudflared
@@ -398,20 +398,20 @@ curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloud
     -o /usr/local/bin/cloudflared
 chmod +x /usr/local/bin/cloudflared
 
-# 2. Login ke Cloudflare (buka link di browser)
+# 2. Log in to Cloudflare (open the link in a browser)
 cloudflared tunnel login
 
-# 3. Buat tunnel
+# 3. Create the tunnel
 cloudflared tunnel create malas
 
-# 4. Arahkan domain ke tunnel
+# 4. Point the domain at the tunnel
 cloudflared tunnel route dns malas domain-kamu.com
 
-# 5. Jalankan tunnel (otomatis HTTPS, tidak perlu certbot)
+# 5. Run the tunnel (automatic HTTPS, no certbot needed)
 cloudflared tunnel run --url http://localhost:80 malas
 ```
 
-**Jadikan service supaya otomatis jalan saat boot:**
+**Make it a service so it starts automatically on boot:**
 
 ```bash
 sudo cloudflared service install
@@ -419,68 +419,68 @@ sudo systemctl enable cloudflared
 sudo systemctl start cloudflared
 ```
 
-Update `APP_URL` di `.env`:
+Update `APP_URL` in `.env`:
 ```env
 APP_URL=https://domain-kamu.com
 ```
 
-Lalu rebuild cache:
+Then rebuild the cache:
 ```bash
 php artisan config:cache
 ```
 
 ---
 
-## Setelah Deploy: Akses via Domain
+## After Deploy: Access via Domain
 
-Dua pilihan untuk HTTPS:
+Two options for HTTPS:
 
-### Pilihan A: Cloudflare Tunnel (rekomendasi untuk semua kasus)
-- Tidak perlu IP publik
-- HTTPS otomatis via Cloudflare
-- Gratis (plan Free Cloudflare)
-- Instruksi di bagian [Local Server](#jika-tidak-punya-ip-publik-natISP-blokir-port) di atas
+### Option A: Cloudflare Tunnel (recommended for all cases)
+- No public IP needed
+- Automatic HTTPS via Cloudflare
+- Free (Cloudflare Free plan)
+- Instructions are in the [Local Server](#if-you-have-no-public-ip-natisp-blocks-ports) section above
 
-### Pilihan B: Certbot SSL (butuh IP publik & domain yang sudah diarahkan)
+### Option B: Certbot SSL (needs a public IP & a domain already pointed at it)
 
 ```bash
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d domain-kamu.com
-# Auto-renew sudah disetup oleh certbot
+# Auto-renew is already set up by certbot
 ```
 
-Setelah SSL aktif, update `.env`:
+Once SSL is active, update `.env`:
 ```env
 APP_URL=https://domain-kamu.com
 SSO_REDIRECT_URI=https://domain-kamu.com/auth/callback
 ```
 
-Rebuild cache:
+Rebuild the cache:
 ```bash
 php artisan config:cache
 ```
 
 ---
 
-## Memperbarui Kode (deploy/update.sh)
+## Updating the Code (deploy/update.sh)
 
-Setiap kali ada kode baru di GitHub, jalankan dari server:
+Whenever there is new code on GitHub, run this from the server:
 
 ```bash
 cd /var/www/malas
 bash deploy/update.sh
 ```
 
-Script ini akan:
+This script will:
 1. `git pull origin main`
-2. Update Composer jika `composer.lock` berubah
-3. Rebuild frontend jika ada perubahan di `resources/`
-4. Jalankan migration baru jika ada (tidak menimpa data yang sudah ada)
-5. Clear & rebuild semua cache
-6. Restart queue worker (`php artisan queue:restart`) supaya worker pakai kode terbaru
-7. Aktifkan maintenance mode selama proses, matikan setelah selesai
+2. Update Composer if `composer.lock` changed
+3. Rebuild the frontend if anything under `resources/` changed
+4. Run any new migrations (does not overwrite existing data)
+5. Clear & rebuild all caches
+6. Restart the queue worker (`php artisan queue:restart`) so the worker uses the latest code
+7. Enable maintenance mode during the process, and disable it afterward
 
-### Update manual (jika tidak pakai script)
+### Manual update (if not using the script)
 
 ```bash
 cd /var/www/malas
@@ -500,29 +500,29 @@ php artisan up
 
 ## Troubleshooting
 
-### Error 500 setelah deploy
+### Error 500 after deploy
 
 ```bash
-# Cek log Laravel
+# Check the Laravel log
 tail -n 50 /var/www/malas/storage/logs/laravel.log
 
-# Pastikan .env sudah benar
+# Make sure .env is correct
 php artisan config:clear
 php artisan config:cache
 ```
 
-### Gambar tidak muncul (403)
+### Images don't show up (403)
 
 ```bash
-# Pastikan storage symlink ada
+# Make sure the storage symlink exists
 ls -la /var/www/malas/public/storage
-# Harus menunjuk ke ../storage/app/public
+# Should point to ../storage/app/public
 
-# Kalau tidak ada:
+# If missing:
 php artisan storage:link
 ```
 
-### Permission denied di storage
+### Permission denied in storage
 
 ```bash
 sudo chown -R www-data:www-data /var/www/malas/storage /var/www/malas/bootstrap/cache
@@ -532,81 +532,81 @@ sudo chmod -R 775 /var/www/malas/storage /var/www/malas/bootstrap/cache
 ### Nginx 502 Bad Gateway
 
 ```bash
-# Cek PHP-FPM
+# Check PHP-FPM
 sudo systemctl status php8.2-fpm
 sudo systemctl restart php8.2-fpm
 
-# Cek log nginx
+# Check the nginx log
 sudo tail -n 30 /var/log/nginx/error.log
 ```
 
-### Migration gagal
+### Migration failed
 
 ```bash
-# Lihat status migration
+# See the migration status
 php artisan migrate:status
 
-# Kalau perlu rollback 1 step
+# Roll back 1 step if needed
 php artisan migrate:rollback
 
-# Jangan pernah pakai migrate:fresh di production!
+# Never use migrate:fresh in production!
 ```
 
-### Migrasi storage / job antrian tidak jalan
+### Storage migration / queued jobs not running
 
-Job seperti migrasi otomatis file saat driver storage diganti butuh queue worker aktif via Supervisor.
+Jobs such as the automatic file migration when the storage driver is changed need an active queue worker via Supervisor.
 
 ```bash
-# Cek status worker
+# Check the worker status
 sudo supervisorctl status malas-worker:*
 
-# Kalau tidak jalan / belum ada, setup dulu — lihat bagian "Konfigurasi queue worker (Supervisor)"
-# di Metode 2: Manual Step-by-Step, atau jalankan ulang bash deploy/deploy.sh
+# If it is not running / does not exist yet, set it up first; see the "Configure the queue worker (Supervisor)" section
+# in Method 2: Manual Step-by-Step, or re-run bash deploy/deploy.sh
 
-# Restart worker manual
+# Restart the worker manually
 sudo supervisorctl restart malas-worker:*
 
-# Cek log worker kalau job gagal terus
+# Check the worker log if jobs keep failing
 tail -n 50 /var/www/malas/storage/logs/worker.log
 ```
 
-### Login SSO tidak berfungsi
+### SSO login not working
 
-Pastikan `SSO_REDIRECT_URI` di `.env` **sama persis** dengan yang didaftarkan di Yado dashboard:
+Make sure `SSO_REDIRECT_URI` in `.env` is **exactly the same** as the one registered in the Yado dashboard:
 
 ```env
 SSO_REDIRECT_URI=https://domain-kamu.com/auth/callback
 ```
 
-Setelah ubah `.env`:
+After changing `.env`:
 ```bash
 php artisan config:cache
 ```
 
-### SSO down / tidak bisa diakses sama sekali — akses darurat
+### SSO down / completely unreachable — emergency access
 
-Kalau Yado benar-benar tidak bisa dihubungi (down, migrasi, maintenance terjadwal), ada dua jalur masuk yang tidak lewat SSO — **keduanya tetap butuh verifikasi identitas**, tidak ada bypass tanpa syarat apa pun (lihat [`PHASES.md`](PHASES.md) Phase 16 untuk alasan desainnya):
+If Yado is truly unreachable (down, migration, scheduled maintenance), there are two ways in that do not go through SSO. **Both still require identity verification**; there is no unconditional bypass (see [`PHASES.md`](PHASES.md) Phase 16 for the design rationale):
 
-**1. Self-service lewat email (buat user mana pun, tidak cuma admin)**
+**1. Self-service via email (for any user, not just admins)**
 
-- Halaman login (`/`) → klik tombol "Login" → modal "Masuk ke Malas" muncul dengan 2 pilihan setara: "Login dengan Yado" atau "Login dengan Email". Ini bukan cuma jalur darurat lagi — sekarang opsi login harian yang selalu tersedia, jadi user nggak perlu nunggu SSO down buat coba pakai jalur email.
-- User pilih "Login dengan Email" → masukin email yang biasa dipakai login → kalau terdaftar, dikirim magic link sekali-pakai (15 menit) lewat email. Halaman mandiri `/auth/fallback` juga tetap ada sebagai direct link.
-- **Syarat:** provider Email (Resend) harus sudah dikonfigurasi di `/admin/settings` tab Email — kalau `api_key` belum diisi, fitur ini diam-diam tidak mengirim apa pun (tidak error ke user, tapi juga tidak menolong). Konfigurasi ini **sebelum** SSO benar-benar dibutuhkan, bukan pas kejadian.
-- **Catatan**: login lewat email TIDAK men-sync ulang profil (nama/avatar/username) — itu cuma terjadi pas login lewat SSO. Ini disengaja, bukan bug.
+- Login page (`/`) → click the "Login" button → the "Sign in to Malas" modal appears with 2 equal options: "Login with Yado" or "Login with Email". This is no longer just an emergency path; it is now a daily login option that is always available, so users don't have to wait for SSO to go down to try the email path.
+- The user picks "Login with Email" → enters the email they normally log in with → if registered, a one-time magic link (15 minutes) is sent by email. The standalone `/auth/fallback` page also remains as a direct link.
+- **Requirement:** the Email provider (Resend) must already be configured at `/admin/settings` Email tab. If the `api_key` is not filled in, this feature silently sends nothing (no error to the user, but no help either). Configure this **before** SSO is actually needed, not when it happens.
+- **Note**: logging in via email does NOT re-sync the profile (name/avatar/username); that only happens when logging in via SSO. This is deliberate, not a bug.
 
-**2. CLI, khusus admin/operator yang punya akses server**
+**2. CLI, for admins/operators with server access only**
 
-Kalau butuh masuk cepat tanpa nunggu email (atau mail service belum sempat dikonfigurasi), SSH ke server dan jalankan:
+If you need to get in fast without waiting for email (or the mail service has not been configured yet), SSH into the server and run:
 
 ```bash
 php artisan sso:emergency-login super_admin
 ```
 
-- Argumen boleh role (`super_admin`, `admin`, `user` — bisa juga `superadmin` tanpa underscore) atau email/username spesifik, misal `php artisan sso:emergency-login admin@domainmu.com`.
-- Kalau ada lebih dari satu user dengan role yang sama, command kasih daftar pilihan interaktif — tidak asal ambil satu.
-- Command tampilkan dulu siapa yang bakal dikasih akses dan minta konfirmasi (`y/N`) sebelum menerbitkan link.
-- Output-nya URL langsung siap dibuka di browser, berlaku 15 menit, sekali pakai (token dan mekanismenya sama persis dengan magic link email di atas — cuma jalur penerbitannya beda, dari CLI bukan dari form).
-- **Kenapa ini aman untuk dijalankan tanpa gerbang tambahan:** satu-satunya syarat menjalankan command ini adalah akses SSH ke server itu sendiri — sudah setara dengan akses langsung ke database. Tidak ada endpoint publik yang menerbitkan token semudah ini.
-- Setiap link yang diterbitkan (baik dari email maupun CLI) tercatat di Log Aktivitas admin (`auth.fallback_requested` / `auth.emergency_login_issued`), jadi ada jejaknya kapan dan untuk siapa akses darurat ini pernah dipakai.
+- The argument can be a role (`super_admin`, `admin`, `user`; `superadmin` without the underscore also works) or a specific email/username, e.g. `php artisan sso:emergency-login admin@domainmu.com`.
+- If more than one user has the same role, the command shows an interactive list of choices; it does not just pick one.
+- The command first shows who will be granted access and asks for confirmation (`y/N`) before issuing the link.
+- The output is a URL ready to open in a browser, valid for 15 minutes, single-use (the token and mechanism are exactly the same as the email magic link above; only the issuing path differs, from the CLI rather than a form).
+- **Why this is safe to run without an extra gate:** the only requirement to run this command is SSH access to the server itself, which is already equivalent to direct database access. No public endpoint issues tokens this easily.
+- Every issued link (from email or CLI) is recorded in the admin Activity Log (`auth.fallback_requested` / `auth.emergency_login_issued`), so there is a trail of when and for whom this emergency access was ever used.
 
-**Jangan** bikin jalur bypass lain di luar dua ini (misal login otomatis berdasarkan pola email seperti `admin@domain`) — itu bisa ditebak siapa saja yang tau domain aplikasimu dan membuka celah account takeover tanpa verifikasi apa pun.
+**Do not** create any other bypass path beyond these two (e.g. automatic login based on an email pattern like `admin@domain`); anyone who knows your app's domain could guess it, opening an account takeover hole with no verification at all.

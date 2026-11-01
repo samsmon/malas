@@ -111,9 +111,9 @@ class User extends Authenticatable
     }
 
     /**
-     * Route model binding: coba cocokkan lewat username dulu (URL profil publik
-     * pakai username), fallback ke id — karena tidak semua user (mis. yang belum
-     * sinkron dari SSO) punya username terisi.
+     * Route model binding: try to match by username first (public profile URLs use the
+     * username), fall back to id because not every user (e.g. one not yet synced
+     * from SSO) has a username.
      */
     public function resolveRouteBinding($value, $field = null): ?self
     {
