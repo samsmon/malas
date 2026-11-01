@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # MALAS — Deploy Script (Ubuntu Server 24)
-# Jalankan dari root direktori project: bash deploy.sh
+# Run from the project root directory: bash deploy.sh
 # =============================================================================
 set -euo pipefail
 
@@ -14,24 +14,24 @@ warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 step()    { echo -e "\n${BOLD}▶ $*${NC}"; }
 
-# Root project = satu level di atas folder deploy/
+# Project root = one level above the deploy/ folder
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-[[ -f "artisan" ]] || error "Script harus dijalankan dari project MALAS (deploy/deploy.sh)."
+[[ -f "artisan" ]] || error "This script must be run from the MALAS project (deploy/deploy.sh)."
 
 # =============================================================================
-step "Cek hak akses"
+step "Check permissions"
 # =============================================================================
 if [[ $EUID -ne 0 ]]; then
     SUDO="sudo"
-    info "Tidak root — akan pakai sudo untuk instalasi sistem."
+    info "Not root — will use sudo for system installation."
 else
     SUDO=""
 fi
 
 # =============================================================================
-step "Install dependency sistem"
+step "Install system dependencies"
 # =============================================================================
 info "Update package list..."
 $SUDO apt-get update -qq
@@ -59,16 +59,16 @@ if ! command -v composer &>/dev/null; then
     $SUDO mv composer.phar /usr/local/bin/composer
 fi
 
-success "Dependency sistem terpasang."
+success "System dependencies installed."
 
 # =============================================================================
-step "Konfigurasi MySQL"
+step "Configure MySQL"
 # =============================================================================
 echo ""
-read -rp "Nama database [malas_prod]: " DB_DATABASE
+read -rp "Database name [malas_prod]: " DB_DATABASE
 DB_DATABASE="${DB_DATABASE:-malas_prod}"
 
-read -rp "Username database [malas]: " DB_USERNAME
+read -rp "Database username [malas]: " DB_USERNAME
 DB_USERNAME="${DB_USERNAME:-malas}"
 
 while true; do
@@ -77,25 +77,25 @@ while true; do
     read -rsp "Konfirmasi password: " DB_PASSWORD2
     echo ""
     [[ "$DB_PASSWORD" == "$DB_PASSWORD2" ]] && break
-    warn "Password tidak cocok, coba lagi."
+    warn "Passwords do not match, try again."
 done
 
-info "Membuat database dan user MySQL..."
+info "Creating MySQL database and user..."
 $SUDO mysql -e "CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 $SUDO mysql -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
 $SUDO mysql -e "GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'localhost';"
 $SUDO mysql -e "FLUSH PRIVILEGES;"
-success "Database '${DB_DATABASE}' siap."
+success "Database '${DB_DATABASE}' ready."
 
 # =============================================================================
-step "Setup file .env"
+step "Set up .env file"
 # =============================================================================
 if [[ ! -f ".env" ]]; then
     cp .env.example .env
-    info "File .env dibuat dari .env.example."
+    info "Created .env file from .env.example."
 fi
 
-read -rp "Domain / IP server (contoh: malas.example.com atau 123.45.67.89): " APP_DOMAIN
+read -rp "Server domain / IP (e.g. malas.example.com or 123.45.67.89): " APP_DOMAIN
 
 # Update .env
 sed -i "s|APP_ENV=.*|APP_ENV=production|"             .env
@@ -104,7 +104,7 @@ sed -i "s|APP_URL=.*|APP_URL=https://${APP_DOMAIN}|"  .env
 sed -i "s|LOG_LEVEL=.*|LOG_LEVEL=error|"              .env
 sed -i "s|DB_CONNECTION=.*|DB_CONNECTION=mysql|"      .env
 
-# Tambah / update DB config
+# Add / update DB config
 grep -q "^DB_HOST="     .env && sed -i "s|DB_HOST=.*|DB_HOST=127.0.0.1|"          .env || echo "DB_HOST=127.0.0.1"     >> .env
 grep -q "^DB_PORT="     .env && sed -i "s|DB_PORT=.*|DB_PORT=3306|"               .env || echo "DB_PORT=3306"           >> .env
 grep -q "^DB_DATABASE=" .env && sed -i "s|DB_DATABASE=.*|DB_DATABASE=${DB_DATABASE}|" .env || echo "DB_DATABASE=${DB_DATABASE}" >> .env
@@ -112,7 +112,7 @@ grep -q "^DB_USERNAME=" .env && sed -i "s|DB_USERNAME=.*|DB_USERNAME=${DB_USERNA
 grep -q "^DB_PASSWORD=" .env && sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env || echo "DB_PASSWORD=${DB_PASSWORD}" >> .env
 
 echo ""
-warn "SSO credentials wajib diisi agar login berfungsi."
+warn "SSO credentials are required for login to work."
 read -rp "SSO_CLIENT_ID: " SSO_CLIENT_ID
 read -rsp "SSO_CLIENT_SECRET: " SSO_CLIENT_SECRET
 echo ""
@@ -125,53 +125,53 @@ grep -q "^SSO_REDIRECT_URI="  .env && sed -i "s|SSO_REDIRECT_URI=.*|SSO_REDIRECT
 
 sed -i "s|SESSION_ENCRYPT=.*|SESSION_ENCRYPT=true|"  .env
 
-success ".env dikonfigurasi."
+success ".env configured."
 
 # =============================================================================
 step "Install PHP dependencies"
 # =============================================================================
 composer install --no-dev --optimize-autoloader --no-interaction
-success "Composer install selesai."
+success "Composer install finished."
 
 # =============================================================================
 step "Generate application key"
 # =============================================================================
 grep -q "^APP_KEY=base64:" .env || php artisan key:generate
-success "APP_KEY siap."
+success "APP_KEY ready."
 
 # =============================================================================
 step "Build frontend assets"
 # =============================================================================
 npm ci
 npm run build
-success "Frontend build selesai."
+success "Frontend build finished."
 
 # =============================================================================
 step "Database migration & seeding"
 # =============================================================================
 php artisan migrate --force
 php artisan db:seed --class=MenuSeeder --force
-success "Migration dan seeding selesai."
+success "Migration and seeding finished."
 
 # =============================================================================
-step "Setup storage symlink & cache"
+step "Set up storage symlink & cache"
 # =============================================================================
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan optimize
-success "Cache dan storage siap."
+success "Cache dan storage ready."
 
 # =============================================================================
-step "Set permission file"
+step "Set file permissions"
 # =============================================================================
 $SUDO chown -R www-data:www-data storage bootstrap/cache
 $SUDO chmod -R 775 storage bootstrap/cache
-success "Permission diset ke www-data."
+success "Permissions set to www-data."
 
 # =============================================================================
-step "Konfigurasi Nginx"
+step "Configure Nginx"
 # =============================================================================
 PROJECT_PATH="$SCRIPT_DIR"
 NGINX_CONF="/etc/nginx/sites-available/malas"
@@ -214,10 +214,10 @@ $SUDO ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/malas
 $SUDO rm -f /etc/nginx/sites-enabled/default
 $SUDO nginx -t && $SUDO systemctl reload nginx
 $SUDO systemctl enable nginx php8.2-fpm mysql
-success "Nginx dikonfigurasi untuk ${APP_DOMAIN}."
+success "Nginx configured for ${APP_DOMAIN}."
 
 # =============================================================================
-step "Konfigurasi queue worker (Supervisor)"
+step "Configure queue worker (Supervisor)"
 # =============================================================================
 SUPERVISOR_CONF="/etc/supervisor/conf.d/malas-worker.conf"
 
@@ -241,29 +241,29 @@ $SUDO systemctl restart supervisor
 $SUDO supervisorctl reread
 $SUDO supervisorctl update
 $SUDO supervisorctl start malas-worker:* || true
-success "Queue worker aktif (dibutuhkan untuk migrasi storage, backup, dan job antrian lainnya)."
+success "Queue worker is running (needed for storage migration, backups, and other queued jobs)."
 
 # =============================================================================
 echo ""
 echo -e "${GREEN}${BOLD}╔═══════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}${BOLD}║   MALAS berhasil di-deploy!               ║${NC}"
+echo -e "${GREEN}${BOLD}║   MALAS deployed successfully!           ║${NC}"
 echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  URL         : http://${APP_DOMAIN}  (belum HTTPS)"
+echo -e "  URL         : http://${APP_DOMAIN}  (not HTTPS yet)"
 echo -e "  Project dir : ${PROJECT_PATH}"
 echo ""
-echo -e "${BOLD}Langkah selanjutnya (pilih salah satu):${NC}"
+echo -e "${BOLD}Next steps (pick one):${NC}"
 echo ""
-echo -e "  ${BOLD}A. Cloudflare Tunnel (rekomendasi — tanpa perlu IP publik):${NC}"
+echo -e "  ${BOLD}A. Cloudflare Tunnel (recommended — no public IP needed):${NC}"
 echo -e "     1. Install: curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared && chmod +x /usr/local/bin/cloudflared"
 echo -e "     2. Login : cloudflared tunnel login"
-echo -e "     3. Buat  : cloudflared tunnel create malas"
+echo -e "     3. Create : cloudflared tunnel create malas"
 echo -e "     4. Route : cloudflared tunnel route dns malas ${APP_DOMAIN}"
-echo -e "     5. Jalankan: cloudflared tunnel run --url http://localhost:80 malas"
+echo -e "     5. Run    : cloudflared tunnel run --url http://localhost:80 malas"
 echo ""
-echo -e "  ${BOLD}B. SSL langsung (butuh IP publik):${NC}"
+echo -e "  ${BOLD}B. Direct SSL (needs a public IP):${NC}"
 echo -e "     sudo apt install certbot python3-certbot-nginx"
 echo -e "     sudo certbot --nginx -d ${APP_DOMAIN}"
 echo ""
-echo -e "Untuk update kode di masa mendatang, jalankan: ${BOLD}bash deploy/update.sh${NC}"
+echo -e "To update the code in the future, run: ${BOLD}bash deploy/update.sh${NC}"
 echo ""

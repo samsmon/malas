@@ -75,7 +75,7 @@ class SeriesController extends Controller
 
         $series = Series::create($data);
 
-        ActivityLog::record('series.create', "Menambahkan series \"{$series->title_romaji}\".", $series);
+        ActivityLog::record('series.create', "Added series \"{$series->title_romaji}\".", $series);
 
         return redirect()->route('admin.series.index')
             ->with('success', __('flash.series.created'));
@@ -174,12 +174,12 @@ class SeriesController extends Controller
 
         $data = $request->validated();
 
-        // Frontend selalu kirim genres[]/authors[]/dll (bahkan pas kosong, isinya string kosong
-        // sebagai sentinel) supaya Laravel nggak skip key-nya sama sekali — kalau key nggak ada,
-        // update() nggak akan nyentuh kolomnya, jadi tag lama yang sengaja dihapus admin malah
-        // nggak kehapus. Sentinel string kosong dibuang di sini sebelum disimpan — middleware
-        // global ConvertEmptyStringsToNull sudah ngubah '' jadi null duluan sebelum validasi,
-        // jadi filter di sini harus buang null juga, bukan cuma ''.
+        // The frontend always sends genres[]/authors[]/etc. (even when empty, containing an empty string
+        // as a sentinel) so Laravel does not skip the key entirely. If the key is missing,
+        // update() will not touch the column, so old tags the admin deliberately removed would
+        // not be removed. The empty-string sentinel is dropped here before saving. The global
+        // ConvertEmptyStringsToNull middleware already turns '' into null before validation,
+        // so the filter here must drop null too, not just ''.
         foreach (['genres', 'authors', 'illustrators', 'themes', 'demographics'] as $tagField) {
             if (array_key_exists($tagField, $data)) {
                 $data[$tagField] = array_values(array_filter($data[$tagField], fn ($v) => $v !== '' && $v !== null));
@@ -195,7 +195,7 @@ class SeriesController extends Controller
             $fetched = $this->fetchCoverFromUrl($request->cover_url);
             if (! $fetched) {
                 throw ValidationException::withMessages([
-                    'cover_url' => 'Cover dari URL itu gagal diunduh. Periksa URL-nya atau unggah file langsung.',
+                    'cover_url' => 'The cover could not be downloaded from that URL. Check the URL or upload the file directly.',
                 ]);
             }
             if ($series->cover_path) {
@@ -210,7 +210,7 @@ class SeriesController extends Controller
         $changed = collect(array_keys($series->getChanges()))->reject(fn ($k) => $k === 'updated_at')->values();
         ActivityLog::record(
             'series.update',
-            "Mengubah series \"{$series->title_romaji}\"".($changed->isNotEmpty() ? ' ('.$changed->implode(', ').')' : ' (tanpa perubahan data)').'.',
+            "Updated series \"{$series->title_romaji}\"".($changed->isNotEmpty() ? ' ('.$changed->implode(', ').')' : ' (no data changes)').'.',
             $series,
         );
 
@@ -223,7 +223,7 @@ class SeriesController extends Controller
         $this->authorize('delete', $series);
 
         $id = $series->id;
-        ActivityLog::record('series.delete', "Menghapus series \"{$series->title_romaji}\".", $series);
+        ActivityLog::record('series.delete', "Deleted series \"{$series->title_romaji}\".", $series);
         $series->delete();
 
         return $this->indexRedirect()->with([
@@ -247,7 +247,7 @@ class SeriesController extends Controller
 
         $count = $series->count();
         $titles = $series->pluck('title_romaji')->implode(', ');
-        ActivityLog::record('series.bulk_delete', "Menghapus {$count} series sekaligus: {$titles}.");
+        ActivityLog::record('series.bulk_delete', "Deleted {$count} series at once: {$titles}.");
         Series::whereIn('id', $request->ids)->delete();
 
         return $this->indexRedirect()->with([
@@ -264,7 +264,7 @@ class SeriesController extends Controller
         $this->authorize('delete', $series);
 
         $series->restore();
-        ActivityLog::record('series.restore', "Memulihkan series \"{$series->title_romaji}\".", $series);
+        ActivityLog::record('series.restore', "Restored series \"{$series->title_romaji}\".", $series);
 
         return redirect()->back()->with('success', __('flash.series.restored'));
     }
@@ -283,15 +283,15 @@ class SeriesController extends Controller
         }
 
         Series::withTrashed()->whereIn('id', $request->ids)->restore();
-        ActivityLog::record('series.bulk_restore', "Memulihkan {$series->count()} series sekaligus.");
+        ActivityLog::record('series.bulk_restore', "Restored {$series->count()} series at once.");
 
         return redirect()->back()->with('success', __('flash.series.bulk_restored', ['count' => $series->count()]));
     }
 
     /**
-     * Setelah hapus: kembali ke daftar yang sedang dibuka admin (halaman, pencarian, dan filter
-     * tetap), bukan ke halaman 1. Kalau hapus dilakukan dari halaman lain (mis. detail series),
-     * ke daftar biasa. Hanya URL daftar series sendiri yang diterima dari Referer.
+     * After deleting: return to the list the admin currently has open (page, search, and filter
+     * preserved), not page 1. If the delete was done from another page (e.g. series detail),
+     * go to the plain list. Only the series list's own URL is accepted from the Referer.
      */
     private function indexRedirect(): RedirectResponse
     {

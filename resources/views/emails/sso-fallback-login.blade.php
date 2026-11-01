@@ -13,24 +13,24 @@
                     </tr>
                     <tr>
                         <td style="font-size:14px; color:#374151; line-height:1.6; padding-bottom:8px;">
-                            Halo {{ $user->name }},
+                            Hello {{ $user->name }},
                         </td>
                     </tr>
                     <tr>
                         <td style="font-size:14px; color:#374151; line-height:1.6; padding-bottom:24px;">
-                            Ada permintaan login ke Malas tanpa lewat SSO (Yado). Kalau ini kamu, klik tombol di bawah untuk masuk. Link ini cuma berlaku 15 menit dan cuma bisa dipakai sekali.
+                            There was a request to log in to Malas without going through SSO (Yado). If this was you, click the button below to sign in. This link is valid for 15 minutes and can only be used once.
                         </td>
                     </tr>
                     <tr>
                         <td align="center" style="padding-bottom:24px;">
                             <a href="{{ $loginUrl }}" style="background:#111827; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:6px; font-size:14px; font-weight:600; display:inline-block;">
-                                Login ke Malas
+                                Log in to Malas
                             </a>
                         </td>
                     </tr>
                     <tr>
                         <td style="font-size:12px; color:#9ca3af; line-height:1.6;">
-                            Kalau bukan kamu yang minta ini, abaikan saja email ini — tidak ada yang berubah di akunmu.
+                            If you didn't request this, just ignore this email — nothing has changed on your account.
                         </td>
                     </tr>
                 </table>

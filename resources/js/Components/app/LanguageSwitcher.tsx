@@ -32,8 +32,8 @@ export function LanguageSwitcher({
     function handleSelect(value: string) {
         void i18n.changeLanguage(value);
         setOpen(false);
-        // Guest (mis. Landing page) belum punya akun buat nyimpen preferensi bahasa —
-        // ganti bahasa cukup di client, tanpa panggil endpoint yang butuh login.
+        // Guests (e.g. Landing page) have no account to store a language preference —
+        // switching language happens client-side only, without calling an endpoint that requires login.
         if (!auth?.user) return;
         router.patch(route('settings.locale.update'), { locale: value }, {
             preserveScroll: true,

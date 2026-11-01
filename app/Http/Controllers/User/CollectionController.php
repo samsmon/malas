@@ -56,10 +56,10 @@ class CollectionController extends Controller
     }
 
     /**
-     * Nomor volume yang belum dimiliki user — dibandingkan terhadap `series.total_volumes`
-     * (angka ini dari AniList/RanobeDB udah merepresentasikan volume yang SUDAH rilis, bukan
-     * proyeksi total planned, jadi nggak perlu filter tanggal rilis terpisah). Null kalau
-     * `total_volumes` belum diketahui — nggak bisa dihitung gap-nya.
+     * Volume numbers the user does not own yet, compared against `series.total_volumes`
+     * (this number from AniList/RanobeDB already represents volumes that HAVE been released, not
+     * a projected planned total, so no separate release date filter is needed). Null if
+     * `total_volumes` is not known yet, so the gap cannot be computed.
      *
      * @return array<int, int>
      */
@@ -85,8 +85,8 @@ class CollectionController extends Controller
             ->with(['series', 'collectionVolumes'])
             ->get()
             ->map(fn ($c) => [
-                // Identifier series buat matching pas import — dikirim semuanya (bukan cuma satu)
-                // biar import tetap bisa cocok walau salah satu ID berubah/kosong.
+                // Series identifiers for matching on import. All are sent (not just one)
+                // so the import can still match even if one ID changes or is empty.
                 'series' => [
                     'anilist_id' => $c->series->anilist_id,
                     'ranobedb_id' => $c->series->ranobedb_id,
@@ -115,7 +115,7 @@ class CollectionController extends Controller
             'collections' => $collections,
         ];
 
-        $filename = 'malas-koleksi-'.($user->username ?? 'user').'-'.now()->format('Y-m-d-His').'.json';
+        $filename = 'malas-collection-'.($user->username ?? 'user').'-'.now()->format('Y-m-d-His').'.json';
 
         return response()->streamDownload(function () use ($payload) {
             echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -203,7 +203,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.import',
-            "{$user->name} mengimpor {$imported} series ke koleksi (lewati {$skippedExisting} sudah dimiliki, {$skippedNotFound} tidak ada di katalog).",
+            "{$user->name} imported {$imported} series into the collection (skipped {$skippedExisting} already owned, {$skippedNotFound} not in the catalog).",
             $user,
         );
 
@@ -273,7 +273,7 @@ class CollectionController extends Controller
             ? __('flash.collections.added_with_skipped', ['count' => $added, 'skipped' => $skipped])
             : __('flash.collections.added', ['count' => $added]);
 
-        ActivityLog::record('collection.add', "{$user->name} menambahkan {$added} series ke koleksi.", $user);
+        ActivityLog::record('collection.add', "{$user->name} added {$added} series to the collection.", $user);
 
         return redirect()->back()->with([
             'success' => $msg,
@@ -292,7 +292,7 @@ class CollectionController extends Controller
         $user = auth()->user();
         $count = $user->collections()->whereIn('id', $request->collection_ids)->delete();
 
-        ActivityLog::record('collection.undo_add', "{$user->name} membatalkan penambahan {$count} series ke koleksi.", $user);
+        ActivityLog::record('collection.undo_add', "{$user->name} undid adding {$count} series to the collection.", $user);
 
         return redirect()->back()->with('success', __('flash.collections.undo_added', ['count' => $count]));
     }
@@ -365,11 +365,11 @@ class CollectionController extends Controller
         $seriesTitle = $collection->series->title_romaji;
         $collection->delete();
 
-        ActivityLog::record('collection.remove', auth()->user()->name." menghapus \"{$seriesTitle}\" dari koleksi.", auth()->user());
+        ActivityLog::record('collection.remove', auth()->user()->name." removed \"{$seriesTitle}\" from the collection.", auth()->user());
 
         return redirect()->route('collection.index')->with([
             'success' => __('flash.collections.deleted'),
-            // Catatan: riwayat pinjaman (Loan) volume di koleksi ini tidak ikut dipulihkan oleh undo.
+            // Note: the loan (Loan) history of volumes in this collection is not restored by undo.
             'undo_url' => route('collection.undo-destroy'),
             'undo_payload' => $payload,
         ]);
@@ -391,8 +391,8 @@ class CollectionController extends Controller
             return redirect()->back()->with('info', __('flash.collections.already_restored'));
         }
 
-        // array_filter buang key yang nilainya null, supaya default kolom DB (mis. condition) tetap
-        // kepakai — kalau nggak, Eloquent akan insert NULL secara eksplisit dan melanggar NOT NULL.
+        // array_filter drops keys whose value is null so the DB column defaults (e.g. condition) are still
+        // used. Otherwise Eloquent would insert NULL explicitly and violate NOT NULL.
         $attributes = array_filter($request->only([
             'series_id', 'condition', 'personal_rating', 'personal_review',
         ]), fn ($value) => $value !== null);
@@ -403,7 +403,7 @@ class CollectionController extends Controller
             $collection->collectionVolumes()->create(array_filter($volume, fn ($value) => $value !== null));
         }
 
-        ActivityLog::record('collection.undo_remove', "{$user->name} memulihkan koleksi yang dihapus.", $user);
+        ActivityLog::record('collection.undo_remove', "{$user->name} restored the deleted collection.", $user);
 
         return redirect()->back()->with('success', __('flash.collections.restored'));
     }
@@ -418,7 +418,7 @@ class CollectionController extends Controller
 
         $collection->update(['condition' => $request->condition]);
 
-        ActivityLog::record('collection.update_condition', auth()->user()->name." mengubah kondisi koleksi \"{$collection->series->title_romaji}\" menjadi {$request->condition}.", auth()->user());
+        ActivityLog::record('collection.update_condition', auth()->user()->name." changed the condition of collection \"{$collection->series->title_romaji}\" to {$request->condition}.", auth()->user());
 
         return redirect()->back()->with('success', __('flash.collections.condition_updated'));
     }
@@ -490,7 +490,7 @@ class CollectionController extends Controller
         if ($created > 0) {
             ActivityLog::record(
                 'collection.volumes.add',
-                auth()->user()->name." menambahkan {$created} volume ke \"{$collection->series->title_romaji}\".",
+                auth()->user()->name." added {$created} volumes to \"{$collection->series->title_romaji}\".",
                 $collection,
             );
         }
@@ -518,7 +518,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.update_format',
-            auth()->user()->name." mengubah format volume {$collectionVolume->volume_number} menjadi {$request->format}.",
+            auth()->user()->name." changed the format of volume {$collectionVolume->volume_number} to {$request->format}.",
             $collectionVolume,
         );
 
@@ -547,7 +547,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.bulk_update_format',
-            auth()->user()->name." mengubah format {$updated} volume menjadi {$request->format}.",
+            auth()->user()->name." changed the format of {$updated} volumes to {$request->format}.",
             $collection,
         );
 
@@ -566,13 +566,13 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.remove',
-            auth()->user()->name." menghapus volume {$volumeNumber} dari \"{$collection->series->title_romaji}\".",
+            auth()->user()->name." removed volume {$volumeNumber} from \"{$collection->series->title_romaji}\".",
             $collection,
         );
 
         return redirect()->back()->with([
             'success' => __('flash.collections.volume_deleted'),
-            // Catatan: riwayat pinjaman (Loan) volume ini tidak ikut dipulihkan oleh undo.
+            // Note: the loan (Loan) history of this volume is not restored by undo.
             'undo_url' => route('collection.volumes.restore', $collection->id),
             'undo_payload' => ['volumes' => [$payload]],
         ]);
@@ -599,13 +599,13 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.bulk_remove',
-            auth()->user()->name." menghapus {$deleted} volume dari \"{$collection->series->title_romaji}\".",
+            auth()->user()->name." removed {$deleted} volumes from \"{$collection->series->title_romaji}\".",
             $collection,
         );
 
         return redirect()->back()->with([
             'success' => __('flash.collections.volumes_bulk_deleted', ['count' => $deleted]),
-            // Catatan: riwayat pinjaman (Loan) volume-volume ini tidak ikut dipulihkan oleh undo.
+            // Note: the loan (Loan) history of these volumes is not restored by undo.
             'undo_url' => route('collection.volumes.restore', $collection->id),
             'undo_payload' => ['volumes' => $volumes],
         ]);
@@ -632,7 +632,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.undo_remove',
-            auth()->user()->name." memulihkan {$restored} volume di \"{$collection->series->title_romaji}\".",
+            auth()->user()->name." restored {$restored} volumes in \"{$collection->series->title_romaji}\".",
             $collection,
         );
 
@@ -653,7 +653,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.toggle_read',
-            auth()->user()->name.' menandai volume '.$collectionVolume->volume_number.($nowRead ? ' sudah dibaca.' : ' belum dibaca.'),
+            auth()->user()->name.' marked volume '.$collectionVolume->volume_number.($nowRead ? ' as read.' : ' as unread.'),
             $collectionVolume,
         );
 
@@ -682,7 +682,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.mark_all_read',
-            auth()->user()->name." menandai {$volumeIds->count()} volume di \"{$collection->series->title_romaji}\" sudah dibaca.",
+            auth()->user()->name." marked {$volumeIds->count()} volumes in \"{$collection->series->title_romaji}\" as read.",
             $collection,
         );
 
@@ -706,14 +706,14 @@ class CollectionController extends Controller
             ->whereIn('id', $request->volume_ids)
             ->update(['read_at' => null]);
 
-        ActivityLog::record('collection.volumes.undo_mark_read', auth()->user()->name.' membatalkan tanda baca volume.', $collection);
+        ActivityLog::record('collection.volumes.undo_mark_read', auth()->user()->name.' undid marking volumes as read.', $collection);
 
         return redirect()->back()->with('success', __('flash.collections.undo_marked_read'));
     }
 
-    // Stepper "progres baca" — geser batas volume terbaca satu langkah, bukan toggle per-volume manual.
-    // forward menandai volume-belum-dibaca bernomor terendah; backward membalik volume-sudah-dibaca
-    // bernomor tertinggi. Sengaja tidak menyentuh volume yang ditandai manual di luar urutan.
+    // "Reading progress" stepper: moves the read-volume boundary one step, not a manual per-volume toggle.
+    // forward marks the lowest-numbered unread volume as read; backward reverts the highest-numbered
+    // read volume. Deliberately leaves volumes that were marked manually out of order untouched.
     public function advanceReadProgress(Request $request, Collection $collection): RedirectResponse
     {
         $this->authorize('update', $collection);
@@ -753,13 +753,13 @@ class CollectionController extends Controller
         ]);
     }
 
-    // Quick-edit jumlah volume dimiliki per format — nomor volume dibagi bersama lintas format dalam
-    // satu koleksi (unique constraint di collection_id+volume_number), jadi "add" selalu ambil nomor
-    // berikutnya yang belum dimiliki sama sekali, bukan per-format. "remove" hapus volume bernomor
-    // tertinggi DARI format yang dipilih — tombolnya sudah didisable di frontend kalau volume itu
-    // lagi dipinjamkan, tapi ini validasi server-side sebagai lapisan kedua. PENTING: kalau volume
-    // tertinggi ternyata lagi dipinjam, request DITOLAK (bukan diam-diam turun ke volume di bawahnya)
-    // — user harus selalu tahu persis volume mana yang kehapus, bukan ditebak sistem.
+    // Quick-edit of owned volume count per format. Volume numbers are shared across formats within
+    // one collection (unique constraint on collection_id+volume_number), so "add" always takes the
+    // next number not owned at all, not per format. "remove" deletes the highest-numbered volume
+    // OF the selected format. The button is already disabled in the frontend if that volume
+    // is currently on loan, but this is server-side validation as a second layer. IMPORTANT: if the
+    // highest volume turns out to be on loan, the request is REJECTED (not silently falling back to the volume below it).
+    // The user must always know exactly which volume gets removed, not have the system guess.
     public function quickAdjustCount(Request $request, Collection $collection): RedirectResponse
     {
         $this->authorize('update', $collection);
@@ -791,7 +791,7 @@ class CollectionController extends Controller
 
             ActivityLog::record(
                 'collection.volumes.quick_add',
-                auth()->user()->name." menambahkan volume {$nextNumber} ({$format}) ke \"{$collection->series->title_romaji}\".",
+                auth()->user()->name." added volume {$nextNumber} ({$format}) to \"{$collection->series->title_romaji}\".",
                 $collection,
             );
 
@@ -821,7 +821,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.volumes.quick_remove',
-            auth()->user()->name." menghapus volume {$volumeNumber} ({$format}) dari \"{$collection->series->title_romaji}\".",
+            auth()->user()->name." removed volume {$volumeNumber} ({$format}) from \"{$collection->series->title_romaji}\".",
             $collection,
         );
 
@@ -848,7 +848,7 @@ class CollectionController extends Controller
 
         ActivityLog::record(
             'collection.update_review',
-            auth()->user()->name." memperbarui review/rating untuk \"{$collection->series->title_romaji}\".",
+            auth()->user()->name." updated the review/rating for \"{$collection->series->title_romaji}\".",
             $collection,
         );
 

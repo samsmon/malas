@@ -37,9 +37,9 @@ class StorageSettingController extends Controller
                 'endpoint' => $setting->endpoint,
                 'region' => $setting->region,
                 'url' => $setting->url,
-                // Secret dikirim ke frontend sekarang (dulu disembunyikan total) — halaman ini
-                // sudah super_admin-only lewat StorageSettingPolicy, jadi nggak nambah expose
-                // ke audience baru. UI nampilinnya di belakang toggle show/hide (ikon mata).
+                // The secret is now sent to the frontend (it used to be fully hidden). This page
+                // is already super_admin-only via StorageSettingPolicy, so it adds no exposure
+                // to a new audience. The UI shows it behind a show/hide toggle (eye icon).
                 'secret_access_key' => $setting->secret_access_key,
                 'has_secret' => filled($setting->secret_access_key),
                 'migration_status' => $setting->migration_status,
@@ -79,9 +79,9 @@ class StorageSettingController extends Controller
 
         $this->storage->forgetCache();
 
-        ActivityLog::record('storage_settings.update', "Mengubah pengaturan storage (driver: {$oldConfig['driver']} → {$setting->driver}).");
+        ActivityLog::record('storage_settings.update', "Updated storage settings (driver: {$oldConfig['driver']} → {$setting->driver}).");
 
-        // Lokasi file efektif berubah — migrasi otomatis di background supaya file lama tidak "hilang" dari UI.
+        // The effective file location changed: migrate automatically in the background so old files do not "disappear" from the UI.
         $locationChanged = $oldConfig['driver'] !== $setting->driver
             || $oldConfig['access_key_id'] !== $setting->access_key_id
             || $oldConfig['bucket'] !== $setting->bucket

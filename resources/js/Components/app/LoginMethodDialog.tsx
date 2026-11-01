@@ -14,20 +14,20 @@ type Step = 'choice' | 'email-form' | 'sent';
 interface LoginMethodDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    /** 'link' = "Tambah Akun" (user sudah login, mau nyambungin akun lain) — bukan login awal. */
+    /** 'link' = "Add Account" (user already logged in, linking another account) — not an initial login. */
     mode?: 'login' | 'link';
 }
 
 /**
- * Modal pilihan cara login — SSO Yado atau magic link lewat email — dipakai dari
- * tombol "Login" di Landing page (mode="login") DAN dari AccountSwitcher buat "Tambah Akun"
- * (mode="link"). `mode` di sini cuma ganti copy/teks ("Tambah Akun" vs "Masuk ke Malas") —
- * keputusan link-atau-replace akun sepenuhnya di server (AccountLinkService::loginAs()) berdasarkan
- * status login SAAT link dikonsumsi, bukan dari flag yang dikirim dari sini. Ini sengaja: magic
- * link yang diterbitkan lewat CLI (`sso:emergency-login`) atau diklik dari email nggak pernah
- * lewat modal ini sama sekali, jadi keputusan link-mode nggak boleh bergantung ke state di modal.
- * Login lewat email TIDAK men-sync ulang profil (nama/avatar/username) dari SSO — itu cuma terjadi
- * pas login lewat SSO.
+ * Login method picker modal — Yado SSO or a magic link via email — used from the
+ * "Login" button on the Landing page (mode="login") AND from AccountSwitcher for "Add Account"
+ * (mode="link"). Here `mode` only changes the copy/text ("Add Account" vs "Log in to Malas") —
+ * the link-or-replace decision lives entirely on the server (AccountLinkService::loginAs()), based on the
+ * login state WHEN the link is consumed, not on a flag sent from here. This is intentional: magic
+ * links issued via CLI (`sso:emergency-login`) or clicked from an email never go
+ * through this modal at all, so the link-mode decision must not depend on modal state.
+ * Email login does NOT re-sync the profile (name/avatar/username) from SSO — that only happens
+ * on SSO login.
  */
 export function LoginMethodDialog({ open, onOpenChange, mode = 'login' }: LoginMethodDialogProps) {
     const { t } = useTranslation();
@@ -45,7 +45,7 @@ export function LoginMethodDialog({ open, onOpenChange, mode = 'login' }: LoginM
     function handleOpenChange(next: boolean) {
         onOpenChange(next);
         if (!next) {
-            // Tunda reset dikit biar nggak keliatan "loncat" pas animasi close jalan.
+            // Delay the reset slightly so it doesn't visibly "jump" while the close animation runs.
             setTimeout(reset, 200);
         }
     }

@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Schema;
 class MigrateDatabaseData extends Command
 {
     /**
-     * Dipakai sekali pas cutover ke DB engine baru (mis. SQLite/MySQL dev existing → Postgres
-     * Docker). Nggak pakai dump SQL text (`DatabaseBackupController`) karena dialect SQL beda-beda
-     * antara SQLite/MySQL/Postgres (backtick vs double-quote, dst) — di sini datanya disalin baris
-     * per baris lewat query builder, jadi driver-agnostic dan nggak perlu peduli sintaks SQL sama sekali.
+     * Used once at cutover to a new DB engine (e.g. existing SQLite/MySQL dev to Postgres
+     * in Docker). It does not use a SQL text dump (`DatabaseBackupController`) because SQL dialects
+     * differ between SQLite/MySQL/Postgres (backtick vs double-quote, etc.). Here the data is copied
+     * row by row through the query builder, so it is driver-agnostic and ignores SQL syntax entirely.
      */
     protected $signature = 'malas:migrate-data
         {--from=sqlite : Nama connection sumber, sesuai key di config/database.php (mis. sqlite, mysql)}
@@ -20,7 +20,7 @@ class MigrateDatabaseData extends Command
         {--truncate : Kosongkan dulu tabel tujuan sebelum menyalin (aman dipakai berkali-kali/re-run)}
         {--chunk=500 : Jumlah baris per batch insert}';
 
-    protected $description = 'Salin seluruh data dari satu koneksi database ke koneksi lain (mis. SQLite/MySQL lama ke Postgres baru), dipakai sekali pas cutover engine DB.';
+    protected $description = 'Copy all data from one database connection to another (e.g. old SQLite/MySQL to new Postgres), used once at DB engine cutover.';
 
     public function handle(): int
     {
@@ -29,7 +29,7 @@ class MigrateDatabaseData extends Command
         $chunk = max(1, (int) $this->option('chunk'));
 
         if ($from === $to) {
-            $this->error('--from dan --to nggak boleh sama.');
+            $this->error('--from and --to must not be the same.');
 
             return self::FAILURE;
         }
@@ -41,7 +41,7 @@ class MigrateDatabaseData extends Command
             $sourceConnection->getPdo();
             $targetConnection->getPdo();
         } catch (\Throwable $e) {
-            $this->error("Gagal konek ke salah satu koneksi: {$e->getMessage()}");
+            $this->error("Failed to connect to one of the connections: {$e->getMessage()}");
 
             return self::FAILURE;
         }
@@ -49,22 +49,22 @@ class MigrateDatabaseData extends Command
         $tables = $this->listTables($sourceConnection);
 
         if ($tables === []) {
-            $this->warn("Nggak ada tabel ditemukan di koneksi '{$from}'.");
+            $this->warn("No tables found in connection '{$from}'.");
 
             return self::SUCCESS;
         }
 
-        $this->info("Menyalin ".count($tables)." tabel dari '{$from}' ke '{$to}'...");
+        $this->info("Copying ".count($tables)." tables from '{$from}' ke '{$to}'...");
 
-        if (! $this->option('no-interaction') && ! $this->confirm("Lanjutkan? Ini akan ".($this->option('truncate') ? 'MENGOSONGKAN lalu ' : '')."mengisi tabel di koneksi '{$to}'.", true)) {
-            $this->warn('Dibatalkan.');
+        if (! $this->option('no-interaction') && ! $this->confirm("Continue? This will ".($this->option('truncate') ? 'EMPTY and then ' : '')."fill the tables in connection '{$to}'.", true)) {
+            $this->warn('Cancelled.');
 
             return self::SUCCESS;
         }
 
         foreach ($tables as $table) {
             if (! Schema::connection($to)->hasTable($table)) {
-                $this->warn("Skip '{$table}' — tabel belum ada di koneksi tujuan (jalankan `php artisan migrate` di sana dulu).");
+                $this->warn("Skipping '{$table}': table does not exist in the target connection yet (run `php artisan migrate` there first).");
 
                 continue;
             }
@@ -72,7 +72,7 @@ class MigrateDatabaseData extends Command
             $total = $sourceConnection->table($table)->count();
 
             if ($total === 0) {
-                $this->line("  {$table}: kosong, skip.");
+                $this->line("  {$table}: empty, skipping.");
 
                 continue;
             }
@@ -81,10 +81,10 @@ class MigrateDatabaseData extends Command
                 $targetConnection->table($table)->truncate();
             }
 
-            // Nggak pakai chunkById() — sebagian tabel pivot (mis. announcement_user, tabel Spatie
-            // permission yang emang selalu kosong) nggak punya kolom `id`. Karena ini migrasi
-            // sekali-jalan buat app skala homelab (bukan data besar), cursor() + array_chunk cukup
-            // dan nggak butuh kolom unik buat ordering.
+            // Not using chunkById(): some pivot tables (e.g. announcement_user, or the Spatie
+            // permission tables that are always empty) have no `id` column. Since this is a
+            // one-off migration for a homelab-scale app (not big data), cursor() + array_chunk is enough
+            // and needs no unique column for ordering.
             $copied = 0;
             foreach ($sourceConnection->table($table)->cursor()->chunk($chunk) as $rows) {
                 $data = $rows->map(fn ($row) => (array) $row)->all();
@@ -96,10 +96,10 @@ class MigrateDatabaseData extends Command
                 $copied += count($data);
             }
 
-            $this->line("  {$table}: {$copied}/{$total} baris disalin.");
+            $this->line("  {$table}: {$copied}/{$total} rows copied.");
         }
 
-        $this->info('Selesai. Cek jumlah baris tiap tabel penting secara manual sebelum switch DB_CONNECTION di .env.');
+        $this->info('Done. Check the row counts of the important tables manually before switching DB_CONNECTION in .env.');
 
         return self::SUCCESS;
     }

@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DatabaseBackupController extends Controller
 {
-    // Tabel yang tidak di-backup/import (ephemeral atau dikelola SSO)
+    // Tables that are not backed up/imported (ephemeral or managed by SSO)
     private const EXCLUDED = [
         'users',
         'migrations',
@@ -35,7 +35,7 @@ class DatabaseBackupController extends Controller
             echo "-- Malas Database Backup\n";
             echo '-- Generated : '.now()->toDateTimeString()."\n";
             echo '-- Tables    : '.implode(', ', $tables)."\n";
-            echo "-- NOTE: Tabel 'users' tidak di-backup (dikelola via SSO)\n\n";
+            echo "-- NOTE: Table 'users' is not backed up (managed via SSO)\n\n";
             echo $this->fkChecksStatement(false)."\n\n";
 
             foreach ($tables as $table) {
@@ -91,8 +91,8 @@ class DatabaseBackupController extends Controller
 
         $content = file_get_contents($request->file('backup_file')->getRealPath());
 
-        // Terima signature lama (MALAS, sebelum rename ke title case) juga — backup lama yang
-        // sudah pernah di-download user jangan sampai ketolak cuma gara-gara ganti nama brand.
+        // Also accept the old signature (MALAS, before the rename to title case), so old backups that
+        // users already downloaded are not rejected just because the brand name changed.
         if (! str_starts_with($content, '-- Malas Database Backup') && ! str_starts_with($content, '-- MALAS Database Backup')) {
             return back()->with('error', __('flash.database_backup.invalid_file'));
         }
@@ -100,11 +100,11 @@ class DatabaseBackupController extends Controller
         // Parse statement satu per satu
         $statements = $this->parseStatements($content);
 
-        // Safety: buang statement yang menyentuh tabel excluded
+        // Safety: drop statements that touch excluded tables
         $excluded = self::EXCLUDED;
         $statements = array_filter($statements, function (string $sql) use ($excluded): bool {
             foreach ($excluded as $table) {
-                // Cek apakah statement menyebut tabel ini dalam konteks DML/DDL
+                // Check whether the statement mentions this table in a DML/DDL context
                 if (preg_match('/\b(DELETE\s+FROM|INSERT\s+INTO|UPDATE|TRUNCATE|DROP\s+TABLE|CREATE\s+TABLE)\s+[`"]?'.preg_quote($table, '/').'[`"]?/i', $sql)) {
                     return false;
                 }
@@ -123,12 +123,12 @@ class DatabaseBackupController extends Controller
                     continue;
                 }
 
-                // Baris FK-check di file (bisa sintaks MySQL atau SQLite, tergantung driver
-                // waktu backup di-generate) sengaja di-skip di sini — kita selalu terbitkan
-                // pragma/statement yang benar buat driver yang lagi aktif SEKARANG lewat
-                // fkChecksStatement(), bukan ngeksekusi baris mentah dari file. Ini juga yang
-                // bikin import lintas-driver (mis. backup dari SQLite dev, restore ke MySQL
-                // prod) tetap jalan — statement INSERT/DELETE-nya sendiri driver-agnostic.
+                // FK-check lines in the file (MySQL or SQLite syntax, depending on the driver
+                // used when the backup was generated) are deliberately skipped here. We always emit
+                // the correct pragma/statement for the driver that is active NOW via
+                // fkChecksStatement(), instead of executing the raw line from the file. This is also what
+                // keeps cross-driver import working (e.g. a backup from SQLite dev restored to MySQL
+                // prod); the INSERT/DELETE statements themselves are driver-agnostic.
                 if (preg_match('/^(SET\s+FOREIGN_KEY_CHECKS|PRAGMA\s+foreign_keys|SET\s+session_replication_role)/i', $sql)) {
                     continue;
                 }
@@ -139,12 +139,12 @@ class DatabaseBackupController extends Controller
             DB::statement($this->fkChecksStatement(true));
             DB::commit();
 
-            ActivityLog::record('database.import', 'Mengimpor database dari file backup: '.$request->file('backup_file')->getClientOriginalName().'.');
+            ActivityLog::record('database.import', 'Imported database from backup file: '.$request->file('backup_file')->getClientOriginalName().'.');
 
             return back()->with('success', __('flash.database_backup.imported'));
         } catch (\Throwable $e) {
             DB::rollBack();
-            // Pastikan FK checks kembali aktif meski rollback
+            // Make sure FK checks are re-enabled even on rollback
             try {
                 DB::statement($this->fkChecksStatement(true));
             } catch (\Throwable) {
@@ -162,14 +162,14 @@ class DatabaseBackupController extends Controller
         foreach (explode("\n", $content) as $line) {
             $trimmed = ltrim($line);
 
-            // Skip komentar dan baris kosong
+            // Skip comments and empty lines
             if ($trimmed === '' || str_starts_with($trimmed, '--')) {
                 continue;
             }
 
             $current .= $line."\n";
 
-            // Statement selesai kalau baris diakhiri titik koma
+            // A statement ends when a line ends with a semicolon
             if (str_ends_with(rtrim($line), ';')) {
                 $statements[] = trim($current);
                 $current = '';
@@ -181,7 +181,7 @@ class DatabaseBackupController extends Controller
 
     private function getBackupTables(): array
     {
-        // Cara list tabel beda-beda per driver — SQLite (dev, lihat CLAUDE.md) pakai
+        // How to list tables differs per driver — SQLite (dev, lihat CLAUDE.md) pakai
         // `sqlite_master`, Postgres pakai `information_schema`, MySQL pakai `SHOW TABLES`.
         $rows = match (DB::connection()->getDriverName()) {
             'sqlite' => DB::select("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"),
@@ -197,8 +197,8 @@ class DatabaseBackupController extends Controller
 
     /**
      * MySQL pakai `SET FOREIGN_KEY_CHECKS`, SQLite pakai `PRAGMA foreign_keys`, Postgres
-     * nggak punya toggle FK global — pakai `session_replication_role = replica` (butuh privilege
-     * superuser/owner, yang dipenuhi otomatis di container Postgres punya sendiri).
+     * has no global FK toggle; use `session_replication_role = replica` (needs
+     * superuser/owner privilege, which is satisfied automatically in our own Postgres container).
      */
     private function fkChecksStatement(bool $enable): string
     {
@@ -209,7 +209,7 @@ class DatabaseBackupController extends Controller
         };
     }
 
-    /** Backtick (MySQL/SQLite) vs double-quote (Postgres) buat identifier di dump SQL. */
+    /** Backtick (MySQL/SQLite) vs double-quote (Postgres) for identifiers in the SQL dump. */
     private function identifierQuoteChar(): string
     {
         return DB::connection()->getDriverName() === 'pgsql' ? '"' : '`';

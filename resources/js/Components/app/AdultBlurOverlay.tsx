@@ -11,8 +11,8 @@ interface AdultBlurOverlayProps {
     className?: string;
 }
 
-/** Wrapper pengganti div cover biasa — selalu render className yang diberikan (mis. aspect-[2/3]),
- * dan menambahkan lapisan blur + tombol reveal di atasnya kalau series ditandai 18+. */
+/** Wrapper replacing the plain cover div — always renders the given className (e.g. aspect-[2/3]),
+ * and adds a blur layer + reveal button on top when the series is marked 18+. */
 export function AdultBlurOverlay({ isAdult, children, className }: AdultBlurOverlayProps) {
     const { t } = useTranslation();
     const { site_settings } = usePage<PageProps>().props;

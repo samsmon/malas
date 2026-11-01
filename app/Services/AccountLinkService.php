@@ -6,23 +6,23 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Multi-account switching — session-based, TIDAK ada link permanen di DB. Sengaja begitu:
- * switch akun selalu butuh bukti kontrol beneran (login ulang) ke akun target, jadi nyimpen
- * link permanen nggak ngurangin langkah keamanan apa pun, cuma nambah kompleksitas. Daftar akun
- * yang "ke-link" cuma hidup di session (`linked_account_ids`) — ganti browser/device, ilang,
- * harus link ulang dari nol.
+ * Multi-account switching: session-based, NO permanent link in the DB. This is deliberate:
+ * switching accounts always requires real proof of control (re-login) of the target account, so storing
+ * a permanent link would not reduce any security step, only add complexity. The list of
+ * "linked" accounts lives only in the session (`linked_account_ids`); change browser/device and it
+ * is gone, so you have to link again from scratch.
  */
 class AccountLinkService
 {
     /**
-     * Login sebagai $user. Kalau lagi ada user LAIN yang aktif login di sesi ini, user itu
-     * otomatis ditambahkan ke daftar akun ke-link (bukan diganti/hilang) — supaya bisa switch
-     * balik tanpa re-auth. Keputusan ini SENGAJA berdasarkan status login saat ini (`auth()->check()`),
-     * bukan flag eksplisit dari UI ("Tambah Akun" vs login biasa) — karena magic link yang
-     * diterbitkan lewat CLI (`sso:emergency-login`) atau yang di-klik dari email nggak pernah lewat
-     * modal "Tambah Akun", jadi flag manapun yang dikirim dari situ nggak akan pernah ke-set. Kalau
-     * user memang mau logout dulu baru login akun lain, itu ditangani lewat AccountController's
-     * logoutCurrent()/logout total — bukan tanggung jawab method ini.
+     * Log in as $user. If ANOTHER user is currently logged in on this session, that user is
+     * automatically added to the linked-accounts list (not replaced or lost) so the user can switch
+     * back without re-auth. This is DELIBERATELY based on the current login state (`auth()->check()`),
+     * not an explicit UI flag ("Add Account" vs a normal login), because magic links issued
+     * via CLI (`sso:emergency-login`) or clicked from an email never pass through the
+     * "Add Account" modal, so any flag sent from there would never be set. If the
+     * user wants to log out first and then log in to another account, that is handled by
+     * AccountController's logoutCurrent()/full logout, not by this method.
      */
     public function loginAs(User $user): void
     {

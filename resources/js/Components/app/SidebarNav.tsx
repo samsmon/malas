@@ -28,8 +28,8 @@ function NavLink({ item, iconMap, onClick, indent, collapsed }: NavLinkProps) {
     const Icon = item.icon ? (iconMap[item.icon] ?? null) : null;
     const isActive = !!item.route_name && route().current(item.route_name);
     const href = item.route_name && route().has(item.route_name) ? route(item.route_name) : '#';
-    // Ambil data halaman saat kursor melintas supaya klik terasa instan. Halaman admin yang
-    // berhubungan dengan API luar tidak di-prefetch (hover tidak boleh memicu panggilan keluar).
+    // Fetch page data on hover so clicks feel instant. Admin pages that
+    // talk to external APIs are not prefetched (hover must not trigger outbound calls).
     const canPrefetch = href !== '#' && !/^admin\.(anilist|ranobedb|search-external)/.test(item.route_name ?? '');
 
     const link = (

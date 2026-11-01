@@ -10,8 +10,8 @@ import { type PageProps } from '@/types';
 
 const appName = import.meta.env.VITE_APP_NAME || 'MALAS';
 
-// Satu chunk per halaman (lazy). Kunjungan pertama ke sebuah menu butuh dua jeda jaringan berurutan:
-// data halaman, lalu chunk-nya. Memuat chunk menu utama saat browser idle menghilangkan jeda kedua.
+// One chunk per page (lazy). The first visit to a menu needs two sequential network waits:
+// the page data, then its chunk. Preloading the main menu chunks while the browser is idle removes the second wait.
 const pages = import.meta.glob('./Pages/**/*.tsx');
 
 const PRELOAD_USER = [

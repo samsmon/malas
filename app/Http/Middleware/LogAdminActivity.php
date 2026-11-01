@@ -9,15 +9,15 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Safety net untuk log aktivitas admin: setiap request admin yang MENGUBAH data
- * (POST/PUT/PATCH/DELETE) dan sukses, tapi belum dicatat controller lewat ActivityLog::record(),
- * dicatat di sini dengan deskripsi generik. Jadi tidak ada aksi admin yang lolos, termasuk
- * aksi baru yang lupa dipasangi record(). Aksi baca (GET) tidak dicatat, kecuali unduhan
- * backup database yang sensitif.
+ * Safety net for the admin activity log: every admin request that CHANGES data
+ * (POST/PUT/PATCH/DELETE) and succeeds, but was not recorded by the controller via ActivityLog::record(),
+ * is recorded here with a generic description. This way no admin action slips through, including
+ * new actions where record() was forgotten. Read actions (GET) are not recorded, except the
+ * sensitive database backup download.
  */
 class LogAdminActivity
 {
-    /** Route GET yang tetap dicatat karena sensitif. */
+    /** GET routes that are still recorded because they are sensitive. */
     private const LOGGED_GET = ['admin.settings.db.download'];
 
     public function handle(Request $request, Closure $next): Response
@@ -29,7 +29,7 @@ class LogAdminActivity
         try {
             $this->logIfNeeded($request, $response);
         } catch (\Throwable $e) {
-            // Gagal mencatat log tidak boleh menggagalkan aksi admin.
+            // A failure to write the log must not fail the admin action.
             report($e);
         }
 
@@ -50,7 +50,7 @@ class LogAdminActivity
             return;
         }
 
-        // Hanya aksi yang berhasil: error server atau validasi gagal (redirect back dengan errors) tidak dicatat.
+        // Successful actions only: server errors or failed validation (redirect back with errors) are not recorded.
         if ($response->getStatusCode() >= 400) {
             return;
         }

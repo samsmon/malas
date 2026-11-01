@@ -19,8 +19,8 @@ import { PageProps } from '@/types';
 import { type SeriesStatus, type SeriesType } from '@/lib/types';
 import { useTypeFilterOptions } from '@/lib/typeFilters';
 
-// Genre kanonis dari AniList (enum MediaGenre) — sengaja di-hardcode di sini, AniList tidak
-// punya endpoint terpisah untuk daftar genre yang valid.
+// Canonical AniList genres (MediaGenre enum) — intentionally hardcoded here, AniList has no
+// separate endpoint for the list of valid genres.
 const ANILIST_GENRES = [
     'Action', 'Adventure', 'Comedy', 'Drama', 'Ecchi', 'Fantasy', 'Horror',
     'Mahou Shoujo', 'Mecha', 'Music', 'Mystery', 'Psychological', 'Romance',
@@ -81,7 +81,7 @@ export default function AniListIndex({ results, pagination, filters, error }: Pr
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-            // Boleh browse cuma dari genre/tahun tanpa ketik judul apa pun.
+            // Browsing by genre/year alone is allowed, without typing any title.
             if (search.trim() || genre !== 'all' || year.trim()) {
                 router.get(
                     route('admin.anilist.index'),
@@ -100,8 +100,8 @@ export default function AniListIndex({ results, pagination, filters, error }: Pr
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     }, [search, hideAdult, type, genre, year, sortPopularity]);
 
-    // Reset seleksi tiap kali hasil pencarian berubah — seleksi lama dari halaman/filter
-    // sebelumnya nggak relevan lagi.
+    // Reset the selection whenever the search results change — the old selection from the previous
+    // page/filter is no longer relevant.
     useEffect(() => {
         setSelected(new Set());
     }, [results]);
@@ -277,7 +277,7 @@ export default function AniListIndex({ results, pagination, filters, error }: Pr
                 {t('anilist.searchHint')}
             </p>
 
-            {/* Bulk select bar — cuma muncul kalau ada hasil yang bisa diseleksi */}
+            {/* Bulk select bar — only shown when there are selectable results */}
             {selectableResults.length > 0 && (
                 <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
                     <Button variant="outline" size="sm" onClick={toggleSelectAll}>
@@ -331,7 +331,7 @@ export default function AniListIndex({ results, pagination, filters, error }: Pr
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                         {visibleResults.map((item) => (
                             <div key={item.anilist_id} className="relative">
-                                {/* Checkbox seleksi — cuma buat yang belum diimpor */}
+                                {/* Selection checkbox — only for items not yet imported */}
                                 {!item.already_imported && (
                                     <button
                                         type="button"
@@ -397,7 +397,7 @@ export default function AniListIndex({ results, pagination, filters, error }: Pr
                                     </div>
                                 </button>
 
-                                {/* Overlay detail — muncul tepat di atas card */}
+                                {/* Detail overlay — appears right on top of the card */}
                                 {preview?.anilist_id === item.anilist_id && (
                                     <div className="absolute inset-0 z-20 flex flex-col justify-between overflow-hidden rounded-lg border border-border bg-card shadow-xl">
                                         <div className="flex items-start justify-between gap-2 border-b p-3">

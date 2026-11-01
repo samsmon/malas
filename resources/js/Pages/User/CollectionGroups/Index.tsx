@@ -28,9 +28,9 @@ interface Props extends PageProps {
 }
 
 /**
- * Grup koleksi custom ala MDList MangaDex — list bernama, bisa diisi manga mana pun dari koleksi
- * user (many-to-many, satu manga bisa masuk beberapa grup). Halaman ini cuma daftar grup; isi
- * tiap grup dikelola di CollectionGroups/Show.tsx.
+ * Custom collection groups, MangaDex MDList style — named lists that can hold any manga from the user's
+ * collection (many-to-many, one manga can be in several groups). This page only lists groups; the contents
+ * of each group are managed in CollectionGroups/Show.tsx.
  */
 export default function CollectionGroupsIndex({ groups }: Props) {
     const { t } = useTranslation('collection');

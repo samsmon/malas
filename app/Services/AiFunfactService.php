@@ -34,16 +34,16 @@ class AiFunfactService
             ->implode(', ');
 
         $comparisonLine = $context['comparison']
-            ? "Dibanding rata-rata pengguna lain, dia {$context['comparison']['multiplier']}x lebih sering mengoleksi genre {$context['comparison']['genre']}."
+            ? "Compared with the average of other users, they collect the {$context['comparison']['genre']} genre {$context['comparison']['multiplier']}x more often."
             : '';
 
         return <<<PROMPT
-            Kamu adalah asisten yang membuat "funfact" singkat dan menyenangkan tentang selera genre koleksi manga/light novel seorang pengguna aplikasi bernama Malas.
+            You are an assistant that writes short, fun "funfacts" about the genre taste in a user's manga/light novel collection, for an app called Malas.
 
-            Data genre koleksi pengguna ini (persentase dari total genre di koleksinya): {$topGenres}.
+            This user's collection genre data (percentage of the total genres in their collection): {$topGenres}.
             {$comparisonLine}
 
-            Tulis SATU funfact dalam Bahasa Indonesia, gaya santai dan playful, maksimal 2 kalimat pendek, boleh pakai emoji secukupnya. Jangan gunakan format markdown. Langsung tulis funfact-nya saja tanpa basa-basi pembuka.
+            Write ONE funfact in English, casual and playful, at most 2 short sentences, a few emoji are fine. Do not use markdown formatting. Write just the funfact, with no opening pleasantries.
             PROMPT;
     }
 
@@ -52,13 +52,13 @@ class AiFunfactService
         $top = $context['top_genres'][0] ?? null;
 
         if (! $top) {
-            return 'Koleksimu masih terlalu sedikit genre untuk disimpulkan — tambah lagi biar makin kelihatan seleramu!';
+            return 'Your collection has too few genres to draw a conclusion yet. Add more to reveal your taste!';
         }
 
-        $text = "Genre favoritmu adalah {$top['genre']} — {$top['percent']}% dari koleksimu!";
+        $text = "Your favorite genre is {$top['genre']}, at {$top['percent']}% of your collection!";
 
         if ($context['comparison']) {
-            $text .= " Kamu {$context['comparison']['multiplier']}x lebih suka {$context['comparison']['genre']} dibanding rata-rata pengguna lain.";
+            $text .= " You like {$context['comparison']['genre']} {$context['comparison']['multiplier']}x more than the average of other users.";
         }
 
         return $text;
@@ -126,11 +126,11 @@ class AiFunfactService
     private function assertSuccessful($response, string $provider): void
     {
         if ($response->status() === 429) {
-            throw new AiRateLimitException("Rate limit tercapai untuk {$provider} (HTTP 429): {$response->body()}");
+            throw new AiRateLimitException("Rate limit reached for {$provider} (HTTP 429): {$response->body()}");
         }
 
         if (! $response->successful()) {
-            throw new \Exception("Gagal generate funfact dari {$provider} (HTTP {$response->status()}): {$response->body()}");
+            throw new \Exception("Failed to generate funfact from {$provider} (HTTP {$response->status()}): {$response->body()}");
         }
     }
 
@@ -139,7 +139,7 @@ class AiFunfactService
         $text = trim((string) $text);
 
         if ($text === '') {
-            throw new \Exception('Respons AI kosong.');
+            throw new \Exception('AI response was empty.');
         }
 
         return $text;

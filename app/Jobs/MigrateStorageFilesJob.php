@@ -55,9 +55,9 @@ class MigrateStorageFilesJob implements ShouldQueue
                 }
             }
 
-            $message = "{$migrated} file berhasil dipindahkan";
-            $message .= $skipped > 0 ? ", {$skipped} dilewati (tidak ditemukan di lokasi lama)" : '';
-            $message .= $failed > 0 ? ", {$failed} gagal" : '';
+            $message = "{$migrated} files migrated successfully";
+            $message .= $skipped > 0 ? ", {$skipped} skipped (not found in the old location)" : '';
+            $message .= $failed > 0 ? ", {$failed} failed" : '';
             $message .= '.';
 
             $setting->update([
@@ -67,7 +67,7 @@ class MigrateStorageFilesJob implements ShouldQueue
         } catch (\Throwable $e) {
             $setting->update([
                 'migration_status' => 'failed',
-                'migration_message' => 'Migrasi gagal: '.$e->getMessage(),
+                'migration_message' => 'Migration failed: '.$e->getMessage(),
             ]);
         }
     }

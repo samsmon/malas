@@ -31,8 +31,8 @@ class AniListController extends Controller
         $year = $request->get('year') ? (int) $request->get('year') : null;
         $sortByPopularity = $request->boolean('sort_popularity');
 
-        // Boleh browse cuma dari genre/tahun tanpa ketik judul sama sekali — makanya syaratnya
-        // "ada query ATAU ada filter genre/tahun", bukan cuma "ada query" seperti sebelumnya.
+        // Browsing by genre/year alone, without typing a title, is allowed. Hence the condition is
+        // "has a query OR has a genre/year filter", not just "has a query" as before.
         if ($q !== '' || $genre || $year) {
             try {
                 $raw = $this->anilist->searchManga(
@@ -185,8 +185,8 @@ class AniListController extends Controller
     }
 
     /**
-     * Import banyak series sekaligus dari hasil search — satu request GraphQL (getMangaBatch)
-     * bukan N request terpisah per series, supaya nggak boros kuota rate-limit AniList.
+     * Import many series at once from search results: one GraphQL request (getMangaBatch)
+     * instead of N separate requests per series, to avoid wasting the AniList rate-limit quota.
      */
     public function bulkImport(Request $request): RedirectResponse
     {
@@ -220,8 +220,8 @@ class AniListController extends Controller
 
         ActivityLog::record(
             'series.anilist_bulk_import',
-            auth()->user()->name." bulk import dari AniList: {$importedCount} baru, {$updatedCount} diperbarui".
-                ($failedCount > 0 ? ", {$failedCount} gagal" : '').'.',
+            auth()->user()->name." bulk import from AniList: {$importedCount} new, {$updatedCount} updated".
+                ($failedCount > 0 ? ", {$failedCount} failed" : '').'.',
         );
 
         $message = $failedCount > 0
@@ -237,8 +237,8 @@ class AniListController extends Controller
         $existing = Series::where('anilist_id', $anilistId)->first();
 
         if ($existing) {
-            // cover_path sengaja tidak ada di $attributes (lihat mapToSeries) — cover lama
-            // dipertahankan, tidak pernah ke-overwrite otomatis oleh re-import/sync.
+            // cover_path is deliberately absent from $attributes (see mapToSeries): the old cover
+            // is kept and never overwritten automatically by re-import/sync.
             $existing->update($attributes);
 
             return [$existing, false];
@@ -296,10 +296,10 @@ class AniListController extends Controller
     }
 
     /**
-     * Semua nama tag AniList non-spoiler, difilter minimal rank 60 (skala relevansi AniList
-     * 0-100) biar tag yang nyaris nggak relevan nggak ikut numpuk di filter katalog. Dipakai
-     * buat filter tag (whereJsonContains), makanya array datar nama string — pola sama
-     * dengan `genres`.
+     * All non-spoiler AniList tag names, filtered to a minimum rank of 60 (AniList relevance scale
+     * 0-100) so barely relevant tags do not pile up in the catalog filter. Used
+     * for the tag filter (whereJsonContains), hence a flat array of name strings, the same pattern
+     * as `genres`.
      */
     private function extractAllTagNames(array $tags): array
     {
@@ -307,9 +307,9 @@ class AniListController extends Controller
     }
 
     /**
-     * Map nama tag -> kategori AniList (mis. "Isekai" -> "Theme-Reincarnation"), buat tag yang
-     * sama seperti dikembalikan `extractAllTagNames()`. Cuma dipakai buat ngelompokin tag jadi
-     * tree di UI filter (lihat `SeriesController::tagOptions()`), bukan buat query.
+     * Map of tag name -> AniList category (e.g. "Isekai" -> "Theme-Reincarnation"), for the tags
+     * returned by `extractAllTagNames()`. Only used to group tags into a
+     * tree in the filter UI (see `SeriesController::tagOptions()`), not for queries.
      */
     private function extractTagCategoryMap(array $tags): array
     {
@@ -430,10 +430,10 @@ class AniListController extends Controller
     /**
      * @param  array<int, array<string, mixed>>  $data
      *
-     * Genres/authors/themes/demographics disertakan di sini (bukan cuma pas full import) supaya
-     * popover "Sync AniList" di halaman Edit Series bisa langsung ngisi field genre/tag dari hasil
-     * search — sebelumnya field ini nggak pernah sampai ke form, jadi sync kelihatan "nggak nambah"
-     * genre/tag walau AniList sebenarnya punya datanya.
+     * Genres/authors/themes/demographics are included here (not only on full import) so that
+     * the "Sync AniList" popover on the Edit Series page can fill the genre/tag fields directly from the
+     * search results. Previously these fields never reached the form, so sync looked like it "added nothing"
+     * for genre/tag even though AniList actually had the data.
      */
     private function formatResults(array $data): array
     {

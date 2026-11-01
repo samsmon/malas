@@ -10,9 +10,9 @@ interface TagListInputProps {
 }
 
 /**
- * Editor tag/genre bebas (bukan dari enum tetap) — ketik lalu Enter/koma buat nambah, klik X di
- * badge buat hapus. Dipakai buat genres/authors/illustrators/themes/demographics di Series Edit,
- * field-field yang sebelumnya nggak punya UI sama sekali (cuma bisa keisi lewat import awal).
+ * Free-form tag/genre editor (not from a fixed enum) — type then press Enter/comma to add, click X on a
+ * badge to remove. Used for genres/authors/illustrators/themes/demographics in Series Edit,
+ * fields that previously had no UI at all (they could only be filled via the initial import).
  */
 export function TagListInput({ value, onChange, placeholder }: TagListInputProps) {
     const { t } = useTranslation('admin');

@@ -25,7 +25,7 @@ class ProfileController extends Controller
         $viewer = $request->user();
         $isOwner = $viewer?->id === $user->id;
 
-        abort_unless($user->is_profile_public || $isOwner, 403, 'Profil ini privat.');
+        abort_unless($user->is_profile_public || $isOwner, 403, 'This profile is private.');
 
         $collections = Collection::where('user_id', $user->id)
             ->with('series')
@@ -129,7 +129,7 @@ class ProfileController extends Controller
             'following_id' => $user->id,
         ]);
 
-        ActivityLog::record('profile.follow', "{$viewer->name} mengikuti {$user->name}.", $viewer);
+        ActivityLog::record('profile.follow', "{$viewer->name} followed {$user->name}.", $viewer);
 
         return redirect()->back()->with('success', __('flash.profile.followed', ['name' => $user->name]));
     }
@@ -142,7 +142,7 @@ class ProfileController extends Controller
             ->where('following_id', $user->id)
             ->delete();
 
-        ActivityLog::record('profile.unfollow', "{$viewer->name} berhenti mengikuti {$user->name}.", $viewer);
+        ActivityLog::record('profile.unfollow', "{$viewer->name} unfollowed {$user->name}.", $viewer);
 
         return redirect()->back()->with('success', __('flash.profile.unfollowed', ['name' => $user->name]));
     }

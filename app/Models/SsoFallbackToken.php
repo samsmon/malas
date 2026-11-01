@@ -34,8 +34,8 @@ class SsoFallbackToken extends Model
     }
 
     /**
-     * Bikin token baru buat user, return token MENTAH (cuma ada sekarang, disimpan di link
-     * email) — yang tersimpan di DB cuma hash-nya, sama seperti password_reset_tokens Laravel.
+     * Issue a new token for the user and return the RAW token (it exists only now, stored in the
+     * email link). Only its hash is stored in the DB, like Laravel's password_reset_tokens.
      */
     public static function issueFor(User $user): string
     {
@@ -50,7 +50,7 @@ class SsoFallbackToken extends Model
         return $raw;
     }
 
-    /** Cari token yang valid (belum expired, belum dipakai) dari token mentah di URL. */
+    /** Find a valid token (not expired, not yet used) from the raw token in the URL. */
     public static function findValid(string $rawToken): ?self
     {
         return static::query()

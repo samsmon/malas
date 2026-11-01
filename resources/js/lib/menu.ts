@@ -1,9 +1,9 @@
 import { type MenuItem } from '@/types';
 
 /**
- * Menu bawaan sistem (di-seed lewat MenuSeeder) dipetakan ke translation key
- * `menu.*` di common.json — biar label sidebar ikut ganti bahasa. Menu key yang
- * nggak ada di map ini (mis. hasil rename manual admin) jatuh ke label DB apa adanya.
+ * Built-in system menus (seeded via MenuSeeder) are mapped to the `menu.*`
+ * translation keys in common.json — so sidebar labels follow the language. Menu keys
+ * not in this map (e.g. manually renamed by an admin) fall back to the DB label as-is.
  */
 const MENU_KEY_TRANSLATIONS: Record<string, string> = {
     'admin.dashboard': 'menu.dashboard',
@@ -39,11 +39,11 @@ export function menuTranslationKey(key: string): string | null {
 }
 
 /**
- * Ratakan menu (top-level + children) jadi satu daftar item yang bisa dinavigasi
- * (punya route_name), dengan urutan yang sama persis dengan yang dirender SidebarNav:
- * item top-level tanpa children masuk langsung, item top-level yang punya children
- * digantikan oleh children-nya (kategori sendiri biasanya tidak punya route_name).
- * Dipakai supaya urutan sidebar konsisten dengan Command Palette / Global Search (Ctrl+K).
+ * Flatten the menu (top-level + children) into a single list of navigable items
+ * (those with a route_name), in exactly the same order SidebarNav renders:
+ * top-level items without children are included directly, top-level items that have children
+ * are replaced by their children (the category itself usually has no route_name).
+ * Used to keep the sidebar order consistent with the Command Palette / Global Search (Ctrl+K).
  */
 export function flattenMenuItems(menus: MenuItem[]): MenuItem[] {
     const topLevel = menus.filter((m) => !m.parent_key);

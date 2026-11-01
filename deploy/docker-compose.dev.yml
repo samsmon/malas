@@ -1,5 +1,5 @@
-# malas-dev: previewer untuk perubahan kode, memakai database utama dengan role read-only (malas_dev).
-# Jalankan lewat deploy/dev.sh (project dir = root repo, project name = malas-dev).
+# malas-dev: preview for code changes, using the main database with a read-only role (malas_dev).
+# Run via deploy/dev.sh (project dir = repo root, project name = malas-dev).
 name: malas-dev
 
 services:
@@ -36,7 +36,7 @@ services:
       - malas_storage:/var/www/html/storage:ro
     depends_on: [dev-app]
 
-  # Build sekali (default): dev.sh build. Tidak jalan terus-menerus supaya tidak membebani situs rilis.
+  # Build once (default): dev.sh build. Does not run continuously so it does not burden the live site.
   dev-build:
     image: node:20-alpine
     profiles: ["build"]
@@ -52,7 +52,7 @@ services:
       - dev_node_modules:/app/node_modules
       - dev_build:/app/public/build
 
-  # Opsional untuk sesi panjang: dev.sh watch (build ulang otomatis, memori lebih besar).
+  # Optional for long sessions: dev.sh watch (automatic rebuild, higher memory).
   dev-vite:
     image: node:20-alpine
     profiles: ["watch"]

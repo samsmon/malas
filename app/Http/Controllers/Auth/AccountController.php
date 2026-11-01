@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Auth;
 class AccountController extends Controller
 {
     /**
-     * Switch ke akun lain yang sudah ke-link di session ini — TANPA re-auth, karena
-     * kepemilikannya sudah dibuktikan sekali pas akun itu ditambahkan lewat "Tambah Akun".
+     * Switch to another account already linked in this session, WITHOUT re-auth, because
+     * ownership was already proven once when that account was added via "Add Account".
      */
     public function switch(Request $request): RedirectResponse
     {
@@ -22,8 +22,8 @@ class AccountController extends Controller
 
         $linked = session('linked_account_ids', []);
 
-        // Wajib: target harus sudah pernah login beneran di sesi ini — jangan pernah percaya
-        // user_id dari client tanpa validasi ini, atau siapa pun bisa "switch" ke akun sembarangan.
+        // Required: the target must have actually logged in during this session. Never trust
+        // a user_id from the client without this validation, or anyone could "switch" to any account.
         abort_unless(in_array($request->user_id, $linked, true), 403);
 
         $target = User::find($request->user_id);
@@ -31,8 +31,8 @@ class AccountController extends Controller
 
         Auth::login($target, remember: true);
         $request->session()->regenerate();
-        // regenerate() TIDAK menghapus data session (default $destroy = false), jadi
-        // linked_account_ids tetap ada setelah baris ini — sengaja tidak di-set ulang.
+        // regenerate() does NOT delete session data (default $destroy = false), so
+        // linked_account_ids is still present after this line, so it is deliberately not set again.
 
         $default = $target->isAdmin()
             ? route('admin.dashboard', absolute: false)
@@ -42,9 +42,9 @@ class AccountController extends Controller
     }
 
     /**
-     * Logout dari akun yang lagi aktif SAJA (pola X/Twitter) — kalau masih ada akun lain yang
-     * ke-link, otomatis pindah ke situ. Kalau ini akun terakhir, sama efeknya dengan logout total
-     * (delegasi ke SsoController::logout() yang sudah handle SSO-down gracefully).
+     * Log out of the currently active account ONLY (X/Twitter pattern). If other accounts are still
+     * linked, switch to one of them automatically. If this is the last account, the effect is the same as a full logout
+     * (delegated to SsoController::logout(), which already handles SSO being down gracefully).
      */
     public function logoutCurrent(Request $request, SsoController $ssoController): RedirectResponse|\Symfony\Component\HttpFoundation\Response
     {
@@ -56,14 +56,14 @@ class AccountController extends Controller
         $nextId = $linked->first();
 
         if (! $nextId) {
-            // Nggak ada akun lain yang ke-link — ini efektif logout total.
+            // No other linked account, so this is effectively a full logout.
             return $ssoController->logout($request);
         }
 
         $next = User::find($nextId);
 
         if (! $next || $next->is_banned) {
-            // Akun berikutnya di daftar sudah tidak valid — buang dari daftar, coba lagi.
+            // The next account in the list is no longer valid: remove it from the list and try again.
             session(['linked_account_ids' => $linked->reject(fn ($id) => $id === $nextId)->values()->all()]);
 
             return $this->logoutCurrent($request, $ssoController);

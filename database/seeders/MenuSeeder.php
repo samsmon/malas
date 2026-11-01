@@ -10,7 +10,7 @@ class MenuSeeder extends Seeder
     public function run(): void
     {
         $menus = [
-            // Admin menus — utama (top-level, tidak dikelompokkan)
+            // Admin menus: main (top-level, not grouped)
             [
                 'key' => 'admin.dashboard',
                 'label' => 'Dashboard',
@@ -29,7 +29,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.collections',
-                'label' => 'Koleksi',
+                'label' => 'Collections',
                 'icon' => 'library',
                 'route_name' => 'admin.collections.index',
                 'sort_order' => 3,
@@ -37,7 +37,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.loans',
-                'label' => 'Peminjaman',
+                'label' => 'Loans',
                 'icon' => 'hand-coins',
                 'route_name' => 'admin.loans.index',
                 'sort_order' => 4,
@@ -45,14 +45,14 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.users',
-                'label' => 'Pengguna',
+                'label' => 'Users',
                 'icon' => 'users',
                 'route_name' => 'admin.users.index',
                 'sort_order' => 5,
                 'role_access' => ['admin', 'super_admin'],
             ],
 
-            // Kategori: Import metadata eksternal (AniList untuk manga, RanobeDB untuk light novel)
+            // Category: Import external metadata (AniList for manga, RanobeDB for light novels)
             [
                 'key' => 'category.anilist',
                 'label' => 'Import Data',
@@ -63,7 +63,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.search-external',
-                'label' => 'Cari Semua Sumber',
+                'label' => 'Search All Sources',
                 'icon' => 'search',
                 'route_name' => 'admin.search-external.index',
                 'parent_key' => 'category.anilist',
@@ -72,7 +72,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.anilist',
-                'label' => 'Cari Manga',
+                'label' => 'Search Manga',
                 'icon' => 'search',
                 'route_name' => 'admin.anilist.index',
                 'parent_key' => 'category.anilist',
@@ -81,7 +81,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.anilist.status',
-                'label' => 'Status AniList',
+                'label' => 'AniList Status',
                 'icon' => 'activity',
                 'route_name' => 'admin.anilist.status.page',
                 'parent_key' => 'category.anilist',
@@ -90,7 +90,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.ranobedb',
-                'label' => 'Cari Light Novel',
+                'label' => 'Search Light Novels',
                 'icon' => 'search',
                 'route_name' => 'admin.ranobedb.index',
                 'parent_key' => 'category.anilist',
@@ -98,10 +98,10 @@ class MenuSeeder extends Seeder
                 'role_access' => ['admin', 'super_admin'],
             ],
 
-            // Kategori: Lainnya (shared — anggota berbeda per role, difilter otomatis lewat role_access masing-masing)
+            // Category: Others (shared; members differ per role, filtered automatically via each role_access)
             [
                 'key' => 'category.lainnya',
-                'label' => 'Lainnya',
+                'label' => 'Others',
                 'icon' => 'layers',
                 'route_name' => null,
                 'sort_order' => 7,
@@ -118,7 +118,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.menus.user-sidebar',
-                'label' => 'Sidebar User',
+                'label' => 'User Sidebar',
                 'icon' => 'menu',
                 'route_name' => 'admin.menus.user-sidebar',
                 'parent_key' => 'category.lainnya',
@@ -127,7 +127,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.announcements',
-                'label' => 'Pengumuman',
+                'label' => 'Announcements',
                 'icon' => 'megaphone',
                 'route_name' => 'admin.announcements.index',
                 'parent_key' => 'category.lainnya',
@@ -136,7 +136,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.tickets',
-                'label' => 'Tiket',
+                'label' => 'Tickets',
                 'icon' => 'ticket',
                 'route_name' => 'admin.tickets.index',
                 'parent_key' => 'category.lainnya',
@@ -145,7 +145,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.settings',
-                'label' => 'Pengaturan',
+                'label' => 'Settings',
                 'icon' => 'settings',
                 'route_name' => 'admin.settings.index',
                 'parent_key' => 'category.lainnya',
@@ -154,7 +154,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.activity-logs',
-                'label' => 'Log Aktivitas',
+                'label' => 'Activity Log',
                 'icon' => 'activity',
                 'route_name' => 'admin.activity-logs.index',
                 'parent_key' => 'category.lainnya',
@@ -163,7 +163,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'admin.funfact-quota',
-                'label' => 'Kuota Funfact',
+                'label' => 'Funfact Quota',
                 'icon' => 'sparkles',
                 'route_name' => 'admin.funfact-quota.index',
                 'parent_key' => 'category.lainnya',
@@ -171,7 +171,7 @@ class MenuSeeder extends Seeder
                 'role_access' => ['admin', 'super_admin'],
             ],
 
-            // User menus — utama (top-level, tidak dikelompokkan)
+            // User menus: main (top-level, not grouped)
             [
                 'key' => 'user.dashboard',
                 'label' => 'Dashboard',
@@ -182,7 +182,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'user.catalog',
-                'label' => 'Katalog',
+                'label' => 'Catalog',
                 'icon' => 'book-open',
                 'route_name' => 'catalog.index',
                 'sort_order' => 2,
@@ -190,7 +190,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'user.collection',
-                'label' => 'Koleksiku',
+                'label' => 'My Collection',
                 'icon' => 'library',
                 'route_name' => 'collection.index',
                 'sort_order' => 3,
@@ -206,7 +206,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'user.loans',
-                'label' => 'Pinjaman Saya',
+                'label' => 'My Loans',
                 'icon' => 'hand-coins',
                 'route_name' => 'loans.index',
                 'sort_order' => 5,
@@ -214,7 +214,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'user.directory',
-                'label' => 'Cari Pengguna',
+                'label' => 'Find Users',
                 'icon' => 'search',
                 'route_name' => 'directory.index',
                 'sort_order' => 6,
@@ -222,7 +222,7 @@ class MenuSeeder extends Seeder
             ],
             [
                 'key' => 'user.tickets',
-                'label' => 'Tiket',
+                'label' => 'Tickets',
                 'icon' => 'ticket',
                 'route_name' => 'tickets.index',
                 'parent_key' => 'category.lainnya',
@@ -230,10 +230,10 @@ class MenuSeeder extends Seeder
                 'role_access' => ['user'],
             ],
 
-            // Shared — profil (semua role), masuk kategori "Lainnya"
+            // Shared: profile (all roles), goes in the "Others" category
             [
                 'key' => 'settings',
-                'label' => 'Profil',
+                'label' => 'Profile',
                 'icon' => 'user',
                 'route_name' => 'settings.index',
                 'parent_key' => 'category.lainnya',

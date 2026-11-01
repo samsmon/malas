@@ -12,10 +12,10 @@ import { cn } from '@/lib/utils';
 import { type LinkedAccount } from '@/types';
 
 /**
- * Avatar/identitas di sidebar footer — sekarang jadi Popover yang gabungin: lihat profil, switch
- * ke akun lain yang sudah ke-link di session ini ("Tambah Akun"), dan logout (akun ini saja, atau
- * semua akun sekaligus). Multi-account switching-nya session-based (lihat AccountLinkService),
- * kepake semua user — bukan cuma admin.
+ * Avatar/identity in the sidebar footer, now a Popover that combines: view profile, switch
+ * to another account already linked in this session ("Add Account"), and logout (this account only, or
+ * all accounts at once). Multi-account switching is session-based (see AccountLinkService)
+ * and available to all users, not just admins.
  */
 export function AccountSwitcher({ collapsed }: { collapsed?: boolean }) {
     const { auth, linked_accounts: linkedAccounts } = usePage().props;

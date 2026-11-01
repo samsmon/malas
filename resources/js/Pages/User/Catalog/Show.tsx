@@ -286,7 +286,7 @@ export default function CatalogShow({ series, similar_series, media, collection,
                 </div>
             )}
 
-            {/* Rekomendasi — series serupa (genre yang sama), gantiin daftar volume yang dihapus */}
+            {/* Recommendations — similar series (same genre), replacing the removed volume list */}
             {similar_series.length > 0 && (
                 <div className="mt-8">
                     <h2 className="mb-3 text-base font-semibold">{t('show.similarSeries')}</h2>

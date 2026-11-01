@@ -1,16 +1,16 @@
 # Malas — Agent Context
 
-Baca file ini sebelum mengerjakan task apapun di project ini.
+Read this file before working on any task in this project.
 
-## Apa itu Malas?
+## What is Malas?
 
-**Malas** (Manga Library Admin System) adalah aplikasi web untuk mengelola koleksi manga pribadi dan perpustakaan.
+**Malas** (Manga Library Admin System) adalah a web app for managing a personal manga collection and library.
 
-Dua sisi:
-- **Admin panel** — kelola katalog, pengguna, menu, pengumuman
-- **User-facing** — browse katalog, kelola koleksi pribadi, catat peminjaman
+Two sides:
+- **Admin panel** — manage catalog, users, menus, announcements
+- **User-facing** — browse the catalog, manage a personal collection, record loans
 
-UI terinspirasi dari MangaDex (mangadex.org): card-based, cover-forward, dark/light mode.
+The UI is inspired by MangaDex (mangadex.org): card-based, cover-forward, dark/light mode.
 
 ---
 
@@ -23,50 +23,50 @@ UI terinspirasi dari MangaDex (mangadex.org): card-based, cover-forward, dark/li
 | UI | shadcn/ui (Base UI) + Tailwind CSS v4 + Recharts + embla-carousel-react + cmdk |
 | DB (dev) | SQLite |
 | DB (prod) | MySQL 8+ |
-| Auth | SSO Yado (PKCE OAuth2) + Spatie Permission — tidak ada login lokal |
-| Storage | Local disk atau S3-compatible (Cloudflare R2, dll), dikonfigurasi via UI admin, bukan `.env` |
-| External API | AniList GraphQL — import metadata manga/manhwa/manhua/novel |
+| Auth | SSO Yado (PKCE OAuth2) + Spatie Permission — no local login |
+| Storage | Local disk or S3-compatible (Cloudflare R2, etc.), configured via the admin UI, not `.env` |
+| External API | AniList GraphQL — import manga/manhwa/manhua/novel metadata |
 | Bundler | Vite |
 
 ---
 
 ## Roles
 
-| Role | Deskripsi |
+| Role | Description |
 |------|-----------|
-| `super_admin` | Akses penuh, tidak bisa di-ban |
-| `admin` | Akses penuh kecuali manage super_admin |
-| `user` | Browse katalog (read-only), kelola koleksi sendiri |
+| `super_admin` | Full access, cannot be banned |
+| `admin` | Full access except managing super_admin |
+| `user` | Browse the catalog (read-only), manage own collection |
 
 ---
 
-## Fitur Utama
+## Main Features
 
-1. **Menu Management** — admin toggle visibility & maintenance mode per menu
-2. **Katalog Series & Volume** — admin CRUD (+ import/sync dari AniList), user browse read-only
-3. **Koleksi User** — user catat manga yang dimiliki per volume, tracking baca per volume, review & rating pribadi (-10..10)
-4. **Loans** — catat peminjaman volume
-5. **Announcements** — pengumuman dari admin ke semua user
-6. **Sistem Tiket** — user request judul baru masuk katalog, admin respond
-7. **Dashboard** — stat cards + chart (Recharts), rekomendasi genre + Surprise Me (user)
-8. **Global Search / Command Palette** — ⌘K di admin & user, cari data + navigasi cepat
-9. **Storage & Database Backup** — konfigurasi Local/S3 dan backup DB via UI (super_admin)
-10. **Log Aktivitas** — audit trail aksi sensitif admin
-11. **Undo pada toast** — aksi reversible (tandai baca, dll) bisa di-undo langsung dari notifikasi
+1. **Menu Management** — admin toggles visibility & maintenance mode per menu
+2. **Series & Volume Catalog** — admin CRUD (+ import/sync from AniList), user browses read-only
+3. **User Collection** — users record owned manga per volume, track reading per volume, personal review & rating (-10..10)
+4. **Loans** — record volume loans
+5. **Announcements** — announcements from admin to all users
+6. **Sistem Tiket** — users request new titles for the catalog, admin responds
+7. **Dashboard** — stat cards + chart (Recharts), genre recommendations + Surprise Me (user)
+8. **Global Search / Command Palette** — ⌘K in admin & user, search data + quick navigation
+9. **Storage & Database Backup** — Local/S3 configuration and DB backup via UI (super_admin)
+10. **Activity Log** — audit trail of sensitive admin actions
+11. **Undo on toast** — reversible actions (mark as read, etc.) can be undone straight from the notification
 
-Role management bukan menu terpisah — dilakukan dari halaman detail user (`/admin/users/{id}`).
+Role management is not a separate menu; it is done from the user detail page (`/admin/users/{id}`).
 
 ---
 
-## Navigasi per Role
+## Navigation per Role
 
 **Admin sidebar:**
-Dashboard → Series → Koleksi (semua) → Peminjaman → Pengguna → Tiket → Log Aktivitas → Menu → Pengumuman → AniList Search → Pengaturan (super_admin)
+Dashboard → Series → Collections (all) → Loans → Users → Tickets → Activity Log → Menus → Announcements → AniList Search → Settings (super_admin)
 
 **User sidebar:**
-Dashboard → Katalog (read-only) → Koleksiku → Pinjaman Saya → Tiket
+Dashboard → Catalog (read-only) → My Collection → My Loans → Tickets
 
-Ganti role user dilakukan dari halaman detail user, bukan menu "Roles" terpisah.
+Changing a user's role is done from the user detail page, not a separate "Roles" menu.
 
 ---
 
@@ -95,21 +95,21 @@ php artisan optimize       # rebuild all caches
 
 ---
 
-## Dokumen yang Wajib Dibaca
+## Required Reading
 
-| File | Isi |
+| File | Contents |
 |------|-----|
-| `CLAUDE.md` | Coding rules, naming conventions, larangan |
-| `docs/prd.md` | Requirement lengkap + access matrix |
+| `CLAUDE.md` | Coding rules, naming conventions, prohibitions |
+| `docs/prd.md` | Full requirements + access matrix |
 | `docs/ARCHITECTURE.md` | DB schema, folder structure |
 | `docs/FLOWS.md` | Navigation map + user flows |
-| `docs/PHASES.md` | Breakdown fase implementasi + checklist |
-| `QA.md` | Instruksi untuk QA chat setelah kode selesai |
-| `CHANGELOG.md` | Histori perubahan per tanggal |
+| `docs/PHASES.md` | Implementation phase breakdown + checklist |
+| `QA.md` | Instructions for the QA chat once code is done |
+| `CHANGELOG.md` | Change history by date |
 
 ---
 
-## Pola Penting
+## Key Patterns
 
 ### Controller → Inertia Page
 ```php
@@ -123,11 +123,11 @@ return Inertia::render('Admin/Series/Index', [
 
 ### Policy check di controller
 ```php
-$this->authorize('update', $series); // throws 403 jika tidak punya akses
+$this->authorize('update', $series); // throws 403 if no access
 ```
 
 ### Menu maintenance check
-`CheckMenuAccess` middleware otomatis dijalankan di setiap request. Tidak perlu manual check di controller.
+`CheckMenuAccess` middleware runs automatically on every request. No manual check needed in controllers.
 
 ### Form submission (Inertia)
 ```typescript
@@ -139,9 +139,9 @@ form.post(route('admin.series.store'), {
 
 ---
 
-## Hal yang TIDAK Boleh Dilakukan
+## Things NOT to Do
 
-- Jangan mulai implementasi jika pesan user diakhiri "gimana?" (itu diskusi)
-- Jangan modifikasi file di `resources/js/components/ui/` (shadcn source)
-- Jangan skip middleware atau policy
-- Jangan commit `.env`
+- Do not start implementing if the user's message ends with "gimana?" (that is a discussion)
+- Do not modify files in `resources/js/components/ui/` (shadcn source)
+- Do not skip middleware or policies
+- Do not commit `.env`

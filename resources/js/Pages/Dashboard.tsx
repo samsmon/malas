@@ -40,7 +40,7 @@ export default function Dashboard({ auth }: PageProps) {
             </div>
 
             <p className="mt-6 text-sm text-muted-foreground">
-                Halo, {auth.user?.name}! Stats koleksi akan tersedia setelah Phase 5 dan 8.
+                Hello, {auth.user?.name}! Collection stats will be available after Phase 5 and 8.
             </p>
         </UserLayout>
     );

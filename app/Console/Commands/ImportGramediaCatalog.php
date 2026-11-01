@@ -18,18 +18,18 @@ class ImportGramediaCatalog extends Command
      * @var string
      */
     protected $signature = 'malas:import-gramedia
-        {--dry-run : Jalankan simulasi tanpa menyimpan perubahan ke database atau mendownload cover}
-        {--limit= : Batasi jumlah judul yang diproses (opsional, cocok buat testing 3-8 item)}
-        {--skip-existing : Lewati jika series dengan anilist_id sudah ada di DB (default: true)}
-        {--force-update : Timpa/perbarui metadata jika series sudah ada di DB}
-        {--file= : Path ke file katalog JSON (default: database/data/gramedia_catalog.json)}';
+        {--dry-run : Run a simulation without saving changes to the database or downloading covers}
+        {--limit= : Limit the number of titles processed (optional, handy for testing with 3-8 items)}
+        {--skip-existing : Skip if a series with the same anilist_id already exists in the DB (default: true)}
+        {--force-update : Overwrite/update metadata if the series already exists in the DB}
+        {--file= : Path to the JSON catalog file (default: database/data/gramedia_catalog.json)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Import katalog manga & light novel Gramedia ke database Malas via AniList API secara aman.';
+    protected $description = 'Safely import the Gramedia manga & light novel catalog into the Malas database via the AniList API.';
 
     public function __construct(private AniListService $anilist)
     {
@@ -44,7 +44,7 @@ class ImportGramediaCatalog extends Command
         $catalogPath = (string) ($this->option('file') ?: database_path('data/gramedia_catalog.json'));
 
         if (! File::exists($catalogPath)) {
-            $this->error("File katalog tidak ditemukan di: {$catalogPath}");
+            $this->error("Catalog file not found at: {$catalogPath}");
 
             return self::FAILURE;
         }
@@ -53,12 +53,12 @@ class ImportGramediaCatalog extends Command
         $catalog = json_decode($rawJson, true);
 
         if (! is_array($catalog)) {
-            $this->error('File JSON katalog tidak valid atau kosong.');
+            $this->error('The JSON catalog file is invalid or empty.');
 
             return self::FAILURE;
         }
 
-        // Ambil hanya item yang punya AniList ID valid
+        // Keep only items with a valid AniList ID
         $itemsWithAnilist = array_values(array_filter($catalog, fn ($i) => ! empty($i['anilist_id'])));
 
         if ($limit && $limit > 0) {
@@ -68,15 +68,15 @@ class ImportGramediaCatalog extends Command
         $totalItems = count($itemsWithAnilist);
 
         $this->info('=====================================================');
-        $this->info('  MALAS: Import Katalog Gramedia ke Database');
+        $this->info('  MALAS: Import Gramedia Catalog into Database');
         $this->info('=====================================================');
-        $this->line("Mode       : " . ($dryRun ? '<fg=yellow;options=bold>DRY-RUN (Simulasi - Database Aman Tanpa Write)</>' : '<fg=green;options=bold>LIVE (Tulis ke Database)</>'));
-        $this->line("Target     : {$totalItems} judul");
+        $this->line("Mode       : " . ($dryRun ? '<fg=yellow;options=bold>DRY-RUN (Simulation - Database Safe, No Writes)</>' : '<fg=green;options=bold>LIVE (Write to Database)</>'));
+        $this->line("Target     : {$totalItems} titles");
         $this->line("Source     : {$catalogPath}");
         $this->newLine();
 
         if ($totalItems === 0) {
-            $this->warn('Tidak ada judul dengan AniList ID yang siap diproses.');
+            $this->warn('No titles with an AniList ID are ready to process.');
 
             return self::SUCCESS;
         }
@@ -89,22 +89,22 @@ class ImportGramediaCatalog extends Command
         $bar = $this->output->createProgressBar($totalItems);
         $bar->start();
 
-        // Batch processing 25 item per chunk agar tidak boros request GraphQL
+        // Batch processing, 25 items per chunk, to avoid wasting GraphQL requests
         $chunks = array_chunk($itemsWithAnilist, 25);
 
         foreach ($chunks as $chunk) {
             $anilistIds = array_map(fn ($c) => (int) $c['anilist_id'], $chunk);
 
-            // Cek existing di database
+            // Check what already exists in the database
             $existingMap = Series::whereIn('anilist_id', $anilistIds)->get()->keyBy('anilist_id');
 
-            // Ambil metadata dari AniList
+            // Fetch metadata from AniList
             $mediaBatch = [];
             try {
                 $mediaBatch = $this->anilist->getMangaBatch($anilistIds);
             } catch (\Throwable $e) {
                 $this->newLine();
-                $this->error("Gagal mengambil batch metadata AniList: {$e->getMessage()}");
+                $this->error("Failed to fetch AniList metadata batch: {$e->getMessage()}");
             }
 
             $mediaMap = collect($mediaBatch)->keyBy('id');
@@ -114,7 +114,7 @@ class ImportGramediaCatalog extends Command
                 $gramediaTitle = $item['pretty_title'] ?? 'Unknown';
                 $existing = $existingMap->get($anilistId);
 
-                // Jika sudah ada dan tidak diforce update, skip
+                // Skip if it already exists and force-update is not set
                 if ($existing && ! $forceUpdate) {
                     $skippedCount++;
                     $bar->advance();
@@ -133,7 +133,7 @@ class ImportGramediaCatalog extends Command
                 $coverUrl = $anilistData['coverImage']['large'] ?? null;
 
                 if ($dryRun) {
-                    // Hanya simulasi
+                    // Simulation only
                     if ($existing) {
                         $updatedCount++;
                     } else {
@@ -162,7 +162,7 @@ class ImportGramediaCatalog extends Command
                 $bar->advance();
             }
 
-            // Delay 1 detik antar chunk batch agar tidak terkena rate limit
+            // Wait 1 second between chunks to avoid hitting the rate limit
             usleep(1000000);
         }
 
@@ -171,13 +171,13 @@ class ImportGramediaCatalog extends Command
 
         // Summary Table
         $this->table(
-            ['Metrik', 'Jumlah'],
+            ['Metric', 'Count'],
             [
-                ['Total Target Diproses', $totalItems],
-                ['Baru Ditambahkan', $importedCount],
-                ['Diperbarui (Force Update)', $updatedCount],
-                ['Dilewati (Sudah Ada di Database)', $skippedCount],
-                ['Gagal / Tidak Ditemukan', $failedCount],
+                ['Total Targets Processed', $totalItems],
+                ['Newly Added', $importedCount],
+                ['Updated (Force Update)', $updatedCount],
+                ['Skipped (Already in Database)', $skippedCount],
+                ['Failed / Not Found', $failedCount],
             ]
         );
 
@@ -186,13 +186,13 @@ class ImportGramediaCatalog extends Command
             if ($adminUser) {
                 ActivityLog::record(
                     'series.gramedia_import',
-                    "Import katalog Gramedia: {$importedCount} baru, {$updatedCount} diperbarui.",
+                    "Gramedia catalog import: {$importedCount} new, {$updatedCount} updated.",
                     $adminUser
                 );
             }
-            $this->info("Import berhasil disimpan ke database!");
+            $this->info("Import saved to the database successfully!");
         } elseif ($dryRun) {
-            $this->comment("Simulasi selesai. Tidak ada data yang diubah di database.");
+            $this->comment("Simulation finished. No data was changed in the database.");
         }
 
         return self::SUCCESS;

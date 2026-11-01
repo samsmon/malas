@@ -40,7 +40,7 @@ class RanobeDbService
         $series = $data['series'] ?? [];
 
         if (empty($series)) {
-            throw new \Exception("Series dengan RanobeDB ID {$id} tidak ditemukan.");
+            throw new \Exception("Series with RanobeDB ID {$id} not found.");
         }
 
         return $series;
@@ -91,7 +91,7 @@ class RanobeDbService
         try {
             $response = Http::timeout(15)->retry(2, 1000)->get(self::BASE_URL.$path, $query);
         } catch (ConnectionException) {
-            throw new \Exception('Tidak dapat terhubung ke RanobeDB API. Periksa koneksi internet.');
+            throw new \Exception('Unable to connect to the RanobeDB API. Check your internet connection.');
         } catch (RequestException $e) {
             throw new \Exception($this->friendlyError($e->response->status()));
         }
@@ -125,9 +125,9 @@ class RanobeDbService
     private function friendlyError(int $status): string
     {
         return match (true) {
-            $status === 404 => 'Data tidak ditemukan di RanobeDB.',
-            $status === 429 => 'Terlalu banyak request ke RanobeDB API. Tunggu beberapa detik lalu coba lagi.',
-            $status >= 500 => 'RanobeDB sedang bermasalah atau tidak dapat diakses. Coba lagi beberapa saat.',
+            $status === 404 => 'Data not found on RanobeDB.',
+            $status === 429 => 'Too many requests to the RanobeDB API. Wait a few seconds and try again.',
+            $status >= 500 => 'RanobeDB is having problems or is unreachable. Try again shortly.',
             default => "RanobeDB API mengembalikan error HTTP {$status}.",
         };
     }

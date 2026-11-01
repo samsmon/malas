@@ -1,519 +1,519 @@
 # Changelog
 
-Semua perubahan penting pada Malas dicatat di file ini. Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/), disederhanakan untuk histori internal (bukan rilis versi berpenomor).
+All notable changes to Malas are recorded in this file. The format follows the principles of [Keep a Changelog](https://keepachangelog.com/), simplified for internal history (no numbered releases).
 
 ---
 
-## 2026-09-18 — Migrasi Data Prod, Optimasi Performa Nginx, Perbaikan Header Landing, & Multi-Akun SSO
+## 2026-09-18 — Prod Data Migration, Nginx Performance Tuning, Landing Header Fix, & Multi-Account SSO
 
-- **Migrasi Data & Koleksi Lengkap ke Production (`yado-hosts` LXC 101)**:
-  - Memindahkan seluruh data operasional ke PostgreSQL 16 production: 2 users (Super Admin & user `sehnauoi` dengan `sso_id: 3`), 114 series, 773 volume, seluruh 39 koleksi komik (149 volume dimiliki/dibaca milik `sehnauoi`), 1 grup koleksi "RomCom" (`sehnauoi-romcom`), 12 group item, 11 wishlist item, riwayat peminjaman, pengaturan enkripsi, 2 tiket, dan 86 log aktivitas.
-  - Sinkronisasi 363 file media cover komik (~51 MB) ke dalam Docker named volume `malas_storage`, serta symlink `public/storage -> /var/www/html/storage/app/public` agar Nginx melayani file media secara direct HTTP 200.
-  - Sinkronisasi `APP_KEY` environment agar enkripsi database untuk API key Gemini dan pengaturan email Resend terdekripsi bersih (`DECRYPTED_OK`).
-- **Optimasi Performa Nginx (Gzip & Immutable Caching)**:
-  - Diagnosa waktu load lambat: response backend PHP/database sudah sangat cepat (~20 ms), namun bundle JavaScript Vite (610 KB) dan aset cover dilayani mentah tanpa kompresi dan tanpa header browser cache melalui Cloudflare Tunnel.
-  - Mengaktifkan Gzip compression (level 6, min-length 256 bytes) di `deploy/nginx.conf` untuk semua tipe teks, JSON, CSS, dan JavaScript.
-  - Menambahkan header `Cache-Control: public, max-age=31536000, immutable` untuk bundle aset di `/build/assets/` (1 tahun) dan 30 hari untuk cover komik di `/storage/covers/`.
-  - Ukuran transfer bundle JavaScript terpangkas dari **610 KB** menjadi **192 KB** (~68.5% lebih hemat), menghasilkan status `cf-cache-status: HIT` di CDN Cloudflare dan loading 0 ms dari browser memory/disk cache pada navigasi berikutnya.
-- **Perbaikan UI Header Landing Page**:
-  - Memperbaiki layout header dan footer di `resources/js/Pages/Landing.tsx`: kontainer `<header>` dan `<footer>` diubah dari `max-w-5xl` menjadi `max-w-3xl mx-auto` agar sejajar dengan kartu hero utama di `<main>`, mengatasi tombol Login dan switcher yang terlempar terlalu ke kanan.
-  - Menambahkan props `size`, `side`, `align`, dan `className` pada `LanguageSwitcher.tsx` dan `ThemeSwitcher.tsx` sehingga dapat dirender compact (`size="icon-sm"`, `side="bottom"`, `align="end"`) di navbar header.
+- **Full Data & Collection Migration to Production (`yado-hosts` LXC 101)**:
+  - Moved all operational data into the production PostgreSQL 16: 2 users (Super Admin and user `sehnauoi` with `sso_id: 3`), 114 series, 773 volumes, all 39 comic collections (149 volumes owned/read by `sehnauoi`), 1 collection group "RomCom" (`sehnauoi-romcom`), 12 group items, 11 wishlist items, loan history, encryption settings, 2 tickets, and 86 activity logs.
+  - Synced 363 comic cover media files (~51 MB) into the Docker named volume `malas_storage`, plus a `public/storage -> /var/www/html/storage/app/public` symlink so Nginx serves media files directly with HTTP 200.
+  - Synced the `APP_KEY` environment value so the database encryption for the Gemini API key and Resend email settings decrypts cleanly (`DECRYPTED_OK`).
+- **Nginx Performance Optimization (Gzip & Immutable Caching)**:
+  - Diagnosed slow load times: the PHP/database backend responded very quickly (~20 ms), but the Vite JavaScript bundle (610 KB) and cover assets were served raw, with no compression and no browser cache headers, through the Cloudflare Tunnel.
+  - Enabled Gzip compression (level 6, min-length 256 bytes) in `deploy/nginx.conf` for all text, JSON, CSS, and JavaScript types.
+  - Added the header `Cache-Control: public, max-age=31536000, immutable` for bundle assets in `/build/assets/` (1 year) and 30 days for comic covers in `/storage/covers/`.
+  - JavaScript bundle transfer size dropped from **610 KB** to **192 KB** (~68.5% smaller), giving `cf-cache-status: HIT` on the Cloudflare CDN and 0 ms loads from the browser memory/disk cache on later navigations.
+- **Landing Page Header UI Fix**:
+  - Fixed the header and footer layout in `resources/js/Pages/Landing.tsx`: the `<header>` and `<footer>` containers changed from `max-w-5xl` to `max-w-3xl mx-auto` so they line up with the main hero card in `<main>`, fixing the Login button and switchers sitting too far to the right.
+  - Added the props `size`, `side`, `align`, and `className` to `LanguageSwitcher.tsx` and `ThemeSwitcher.tsx` so they can render compact (`size="icon-sm"`, `side="bottom"`, `align="end"`) in the header navbar.
 - **Multi-Account Linking via SSO (`prompt=login`)**:
-  - Modal "Tambah Akun" (`LoginMethodDialog` dengan `mode="link"`) dan `SsoController::redirect()` kini meneruskan parameter `prompt=login` ke SSO Yado.
-  - Memastikan otentikasi akun target memaksa login baru di sisi SSO tanpa tertahan sesi akun sebelumnya, lalu mengaitkannya ke session `linked_account_ids` di Malas sehingga user dapat berpindah akun (`AccountSwitcher`) secara instan tanpa re-auth berulang.
+  - The "Add Account" modal (`LoginMethodDialog` with `mode="link"`) and `SsoController::redirect()` now forward the `prompt=login` parameter to Yado SSO.
+  - Ensures that authenticating the target account forces a fresh login on the SSO side without being held by the previous account's session, then links it to the `linked_account_ids` session in Malas so users can switch accounts (`AccountSwitcher`) instantly without repeated re-auth.
 
 ---
 
-## 2026-08-30 — Cover Volume: Dibangun lalu Dihapus Total, Diganti Rekomendasi Series Serupa
+## 2026-08-30 — Volume Covers: Built, Then Removed Entirely, Replaced by Similar-Series Recommendations
 
-- **Request awal**: cari cover per volume otomatis — buka halaman edit series, scrap semua buku dengan judul yang lagi diedit, ambil edisi Jepang aja biar covernya full (nggak dipotong-crop kayak edisi lokal/Barat).
-- **Sumber data ganti total di tengah proses**: awalnya dibangun pakai Google Books API. User lapor hasilnya "random banget, gaada yang sesuai" — investigasi langsung (bukan dugaan) buktiin tiga keterbatasan Google Books yang saling numpuk: (1) `q` full-text search ke SELURUH data buku bukan cuma judul, (2) operator `intitle:` TERBUKTI nggak reliable buat judul multi-kata (bahkan `intitle:"Harry Potter"` balikin nol hasil), (3) katalog-nya nyaris nggak nge-index manga populer dari penerbit besar Jepang sama sekali. Alternatif yang dicoba & ditolak: Google Custom Search JSON API (ke-block izin GCP), Rakuten Books API (butuh daftar API key baru), openBD.jp (nggak ada endpoint search judul + field cover kosong), Penguin Random House API (katalog Barat, salah target). Akhirnya pindah ke **SerpApi Google Images** (`engine=google_images`, `google_domain=google.co.jp`) — hasilnya relevan, tapi kena limit quota gratis (250 search/bulan) dengan cepat pas dipakai buat bulk auto-lengkapi cover satu series.
-- **Sempat didesain ulang beberapa kali**: dari bulk-assign satu pencarian untuk seluruh series → per-volume single-pick dengan nav ◀ ▶ → auto-lengkapi bulk (opsi "cari otomatis, ambil hasil pertama, kasih progress bar, baru direview") yang awalnya coba dijalanin server-side (gagal "gagal hubungi server", ternyata timeout PHP karena satu request nge-loop N kali fetch API + download gambar sinkron) lalu diperbaiki jadi loop client-side yang manggil endpoint search/apply yang sama dengan mode manual.
-- **Keputusan akhir: dihapus TOTAL**, bukan diperbaiki lagi. Setelah direfleksikan ulang, inti aplikasi ini cuma buat ngetrack progres baca & kepemilikan (fisik/digital) — bukan galeri gambar per volume, jadi seluruh konsep cover di level `Volume` (manual upload/URL, single-pick AniList, auto-search SerpApi, bulk auto-lengkapi) dicabut bersih: kolom `volumes.cover_path` di-drop (migration), `SerpApiService`/`SerpApiSettingsService`/`SerpApiSetting`/`SerpApiSettingController` dihapus filenya (tab "SerpApi" di Admin Settings ikut hilang), `VolumeGrid.tsx` dihapus, `VolumeController` disusutin balik jadi cuma `generate`/`store`/`edit`/`update`/`destroy`/`restore` tanpa handling file. Cover di level **Series** (poster series) tidak disentuh — tetap ada seperti sebelumnya.
-- **Section "Volume (0), Belum ada volume" di halaman detail Katalog** (yang jadi kosong setelah cover-nya dihapus) diganti section **"Mungkin Kamu Suka"** — rekomendasi 12 series dengan genre yang sama (OR-match, pola sama dengan filter genre Katalog Index), fallback ke series bertipe sama kalau series ini nggak punya data genre, ditampilkan pakai `SeriesCard` yang sama dengan Katalog Index. Diverifikasi langsung ke DB dev (bukan cuma baca kode) — query genre-match dan fallback-tipe dua-duanya dites dan menghasilkan rekomendasi yang relevan.
-- **Kartu volume grid di Koleksiku** juga kena dampak (area cover-nya dulu kosong-doang-nomor) — area tengah diganti jadi tombol besar icon `Eye`/`EyeOff` sebagai kontrol utama toggle baca/belum, icon kecil pojok yang lama dihapus (redundan).
-- Sepanjang proses ini juga ketemu & diperbaiki bug tooling lokal (bukan kode fitur): harness testing (`.claude/php-dev.bat`) nggak punya CA bundle SSL, `searchCovers()` sempat nggak nangkep exception. Kedua fix ini ikut kehapus bareng kode fitur yang mereka dukung.
-
----
-
-## 2026-08-28 — Tiga View Koleksiku (Grid/Compact/Table) + Filter Tag Tree di Katalog
-
-- **Koleksiku — view toggle jadi satu kontrol geser**: dua tombol grid/table terpisah diganti satu pill dengan indikator geser CSS (`ViewToggle`), nambah view ketiga **Compact** (row text-only dense). Card grid diperbesar (160px → 190px min-width) biar hover overlay-nya nggak sesak.
-- **Hover overlay desktop (grid & compact)**: progress baca, stepper +/-, "Tandai semua terbaca", tombol "Lanjut ke Vol. X" muncul pas hover (`opacity-0`/`group-hover:opacity-100`, cuma di `md:` ke atas) — sebelumnya cuma ada stepper polos.
-- **Adaptasi mobile**: hover nggak ada konsepnya di touch device, jadi di mobile semua kontrol di atas selalu tampil (bukan nunggu hover) — grid card nampilin progress+stepper+menu di bawah cover (bukan overlay di atas cover), compact row jadi 2-baris. Menu `⋮` baru (`RowActionsMenu`, dropdown 4 item: Lihat Detail/Lanjut ke Vol X/Tandai semua terbaca/Hapus) nutup akses ke aksi yang di desktop cuma keluar pas hover.
-- **Animasi**: dipakai Tailwind/`tw-animate-css` yang udah jadi standar project ini (indikator toggle geser via `transform`, overlay fade/translate, `active:scale-90/95` di tombol) — sengaja **nggak** nambah Anime.js karena semua kebutuhan animasi di sini murni CSS transition/transform, nggak butuh orkestrasi JS.
-- **Skeleton loading**: `GridSkeleton`/`CompactSkeleton`/`TableSkeleton` dipasang buat state "Segarkan" (refresh), gantiin blank state sebelumnya.
-- **Filter Tag (tree per kategori) di Katalog** — numpang di popover "Filter Genre" yang sama (bukan tombol baru) biar filter bar nggak makin panjang. Data tag AniList (nama + kategori, mis. "Isekai" → "Theme-Reincarnation") **sudah** di-fetch dari awal (dipakai buat generate `themes`/`demographics`) tapi dulu dibuang — sekarang disimpan penuh (filter minimal rank 60 skala relevansi AniList, non-spoiler) ke kolom baru `series.tags` (flat array nama, dipakai `whereJsonContains` — pola sama dengan `genres`) dan `series.tag_categories` (map nama→kategori, cuma buat bikin tree, TIDAK pernah masuk WHERE clause). Satu sumber data (AniList) sesuai permintaan user — series lama butuh re-sync ("Sync AniList" di Edit Series) biar field ini keisi.
-- Kategori tag di-tree-kan dari bagian sebelum tanda hubung pertama di kategori mentah AniList ("Theme-Reincarnation" → parent "Theme"), collapsible tapi tetap ke-render penuh di DOM biar search box yang sama tetap bisa nyaring tag di kategori yang lagi ciut.
-- Diverifikasi end-to-end pakai browser beneran + HTTP: sliding indicator, hover overlay hidden-by-default (dicek computed style), breakpoint mobile (resize 375px, dicek `offsetParent` biar akun ancestor `display:none`, bukan cuma computed style elemen itu sendiri), dropdown 4-item beneran ke-klik dan isinya benar, filter tag di Catalog beneran nyaring hasil (dites 2 series dummy dengan tag berbeda, hasil filter sesuai persis).
-- **Bug ketemu pas verifikasi** (bukan di kode fitur ini): `.claude/launch.json` "Laravel Dev" config nunjuk ke `php` polos yang nggak resolve di environment ini — diperbaiki jadi wrapper script (`.claude/php-dev.bat`, gitignored, lokal doang) yang manggil PHP Herd lengkap sama flag ekstensi yang dibutuhkan.
-- **Fix: hover overlay grid Koleksiku tumpang tindih sama info panel di bawahnya** — `AdultBlurOverlay` ternyata bikin `div.relative` sendiri buat cover-nya, jadi overlay hover yang ditulis sebagai sibling-nya (bukan child) nggak ke-clip sama `overflow-hidden` cover itu; overlay yang tadinya `absolute inset-x-0 bottom-0` (tinggi terbuka, cuma nempel ke bawah) bisa jadi lebih tinggi dari kotak cover kalau kontennya banyak. Bug nyata ditemukan user lewat screenshot, bukan ketahuan dari verifikasi computed-style sebelumnya (yang cuma ngecek opacity/pointer-events, bukan bounding box). Fix + simplifikasi (feedback lanjutan user): wrapper luar overlay tetap `absolute inset-0` buat safety (ke-clamp persis ke cover), tapi wrapper-nya sendiri transparan — background gelap+blur dipindah ke panel dalam yang auto-height, jadi visualnya cuma nutup bagian bawah cover (bukan seluruh gambar) persis kayak desain awal. Sekalian dihapus: stepper (+/-) yang tadinya selalu tampil di info panel bawah genre badge (redundant sama stepper di overlay), tombol "Tandai semua terbaca" dan trigger "⋮" di dalam overlay (keduanya udah bisa diakses lewat klik kanan/dropdown mobile) — overlay sekarang jauh lebih ringkas (cuma progress+stepper+tombol lanjut baca).
-- **Klik kanan (context menu) ditambahin ke grid & compact view Koleksiku** — sebelumnya cuma table view yang punya, dan itu pun cuma 2 item. Sekarang ketiga view (grid/compact/table) share isi menu yang sama (`RowContextMenuItems`, 4 item: Lihat/Lanjut ke Vol X/Tandai semua terbaca/Hapus) — sama persis kayak isi dropdown "⋮" yang udah ada, konsisten sama pola klik-kanan yang udah dipakai di `Admin/Series/Index.tsx`.
-- **Dokumen baru `docs/API.md`** — referensi lengkap semua route Laravel (method, path, nama route, controller@action, level akses, tipe respons: Halaman Inertia/JSON/Redirect/File download), di-generate dari `php artisan route:list` + deteksi return-type dari source controller (bukan cuma nebak dari nama route). **Bukan** spesifikasi OpenAPI/REST formal — Malas app Inertia, bukan API buat konsumen eksternal, jadi ini murni referensi internal. Ditautkan dari README.md/README.id.md.
+- **Original request**: find covers per volume automatically — open the series edit page, scrape all books matching the title being edited, and take only the Japanese edition so the covers are full (not cropped like local/Western editions).
+- **Data source changed completely midway**: it was first built on the Google Books API. The user reported the results as "totally random, nothing matches". A direct investigation (not a guess) proved three stacking limitations of Google Books: (1) `q` does full-text search across ALL book data, not just titles, (2) the `intitle:` operator PROVED unreliable for multi-word titles (even `intitle:"Harry Potter"` returned zero results), (3) its catalog barely indexes popular manga from major Japanese publishers at all. Alternatives tried and rejected: Google Custom Search JSON API (blocked by GCP permissions), Rakuten Books API (needs a new API key registration), openBD.jp (no title search endpoint and an empty cover field), Penguin Random House API (Western catalog, wrong target). Finally moved to **SerpApi Google Images** (`engine=google_images`, `google_domain=google.co.jp`) — results were relevant, but it hit the free quota limit (250 searches/month) quickly when used for bulk auto-fill of covers for one series.
+- **Redesigned several times**: from bulk-assigning one search to the whole series → per-volume single-pick with ◀ ▶ navigation → bulk auto-fill (the option "search automatically, take the first result, show a progress bar, review afterwards"), which first ran server-side (failed with "failed to reach server", turned out to be a PHP timeout because one request looped N times over API fetch + synchronous image download) and was then fixed into a client-side loop calling the same search/apply endpoints as manual mode.
+- **Final decision: removed ENTIRELY**, not fixed again. After rethinking, the core of this app is only tracking reading progress and ownership (physical/digital) — not a per-volume image gallery, so the whole concept of covers at the `Volume` level (manual upload/URL, AniList single-pick, SerpApi auto-search, bulk auto-fill) was cleanly removed: the `volumes.cover_path` column was dropped (migration), `SerpApiService`/`SerpApiSettingsService`/`SerpApiSetting`/`SerpApiSettingController` files were deleted (the "SerpApi" tab in Admin Settings went with them), `VolumeGrid.tsx` was deleted, and `VolumeController` was trimmed back to just `generate`/`store`/`edit`/`update`/`destroy`/`restore` with no file handling. Covers at the **Series** level (series posters) were not touched — they remain as before.
+- **The "Volume (0), No volumes yet" section on the Catalog detail page** (which became empty once covers were removed) was replaced with a **"You Might Like"** section — recommending 12 series with the same genre (OR-match, same pattern as the Catalog Index genre filter), falling back to series of the same type if this series has no genre data, displayed with the same `SeriesCard` as the Catalog Index. Verified directly against the dev DB (not just by reading code) — both the genre-match and type-fallback queries were tested and produced relevant recommendations.
+- **The volume grid card in My Collection** was affected too (its cover area used to be just a number on an empty box) — the center area became a big `Eye`/`EyeOff` icon button as the main read/unread toggle, and the old small corner icon was removed (redundant).
+- Along the way, bugs in local tooling (not feature code) were also found and fixed: the testing harness (`.claude/php-dev.bat`) had no SSL CA bundle, and `searchCovers()` failed to catch an exception. Both fixes were removed together with the feature code they supported.
 
 ---
 
-## 2026-08-23 — Deploy via Docker (Postgres) + Rapikan Struktur File Deploy
+## 2026-08-28 — Three My Collection Views (Grid/Compact/Table) + Tag Tree Filter in Catalog
 
-- **Request user**: tambah cara deploy ketiga (Docker, generik buat Proxmox LXC/VM tapi portable ke Linux manapun), database-nya full Postgres (biar konsisten sama microservice lain), pastikan data lama ke-copy ke database baru, sekalian rapiin file infrastruktur yang berantakan di root.
-- **`DatabaseBackupController` jadi 3-driver-aware** (SQLite/MySQL/Postgres): tambah branch Postgres di `getBackupTables()` (`pg_catalog.pg_tables`) dan `fkChecksStatement()` (`SET session_replication_role = replica/origin` — Postgres nggak punya toggle FK global kayak MySQL/SQLite). Identifier quoting di dump SQL sekarang ikut driver aktif (backtick buat MySQL/SQLite, `"double quote"` buat Postgres) lewat helper baru `identifierQuoteChar()`/`quoteIdentifier()`.
-- **Command baru `php artisan malas:migrate-data --from= --to=`** (`MigrateDatabaseData.php`) — buat migrasi data pas cutover engine DB (mis. SQLite/MySQL lama → Postgres baru). Nyalin data baris-per-baris lewat query builder Laravel (`cursor()` + `array_chunk`), bukan lewat teks SQL dump — jadi sepenuhnya driver-agnostic, nggak peduli beda dialect SQL antar tiga engine. Beda dengan backup `.sql` biasa (yang sengaja skip tabel `users`), command ini nyalin **semua** tabel karena tujuannya cutover penuh.
-- **Docker stack baru** (`deploy/`): `Dockerfile` (multi-stage: Node build asset → Composer install → PHP-FPM runtime, ekstensi `pdo_pgsql`/`gd`/`intl`/dst), `docker-compose.yml` (service `app`, `queue`, `nginx`, `db`=Postgres 16), `docker-compose.override.yml` (dev lokal: bind-mount source + service `vite` buat HMR), `nginx.conf`, `.env.docker.example`.
-- **Script `deploy/deploy-docker.sh`** — generik, cuma butuh Docker Engine + Compose plugin di host (LXC/VM Proxmox atau Linux manapun, **tidak** pakai Proxmox API sama sekali): setup `.env`, generate `APP_KEY`, build+jalankan stack, migrate+seed, tawarin migrasi data lama (panggil `malas:migrate-data`), lalu cache production. `deploy/update-docker.sh` buat update kode di deploy yang udah jalan (pola sama dengan `update.sh` versi native).
-- **Rapiin struktur file**: `deploy.sh`/`update.sh` (native, existing) dipindah ke `deploy/deploy.sh`/`deploy/update.sh` (path resolusi `$SCRIPT_DIR` diupdate buat `cd` naik satu level, karena sekarang satu folder lebih dalam dari root). Root project jadi bersih — semua cara deploy sekarang satu tempat di `deploy/`. Referensi path diupdate di `README.md`, `README.id.md`, `docs/DEPLOYMENT.md`.
-- **Dokumen baru `docs/DOCKER.md`** — panduan lengkap metode Docker: kapan pakai ini vs native, prasyarat (termasuk catatan nesting buat LXC Proxmox unprivileged), migrasi data dari instalasi lama, update kode, HTTPS, troubleshooting.
-- **`.dockerignore` baru** — tanpa ini, `COPY . .` di Dockerfile ikut nyalin `bootstrap/cache/*.php` lokal (gitignored, tapi ada di disk dev) yang masih reference `Laravel\Breeze\BreezeServiceProvider` dari `require-dev` — bikin `composer dump-autoload` gagal total di stage `vendor` karena Breeze nggak ke-install waktu `--no-dev`. Ketemu langsung pas build image beneran, bukan cuma baca kode.
-- **Bug permission ketemu & diperbaiki**: user non-root `malas` di image runtime awalnya cuma di-`chown` buat `storage/`+`bootstrap/cache/`, bukan `public/` — bikin `php artisan storage:link` gagal (`symlink(): Permission denied`) karena butuh nulis symlink baru ke dalam `public/`. Fix: tambah `public/` ke daftar `chown` di `Dockerfile`.
-- **Diverifikasi end-to-end pakai Docker beneran** (bukan cuma baca kode): `docker build` sukses, `docker compose up` jalanin app+queue+nginx+db, 44 migration jalan bersih di Postgres asli (nol masalah dialect SQL — semua query app ini emang udah lewat Eloquent/query builder, cuma `DatabaseBackupController` yang punya raw SQL), `storage:link`+seed sukses setelah fix permission, landing page 200 lewat nginx→PHP-FPM→Postgres, login via magic link sukses, download backup Postgres menghasilkan `.sql` valid (`SET session_replication_role = replica;` + identifier `"double-quoted"`), import balik 302 sukses nol error baru di log, redownload setelahnya identik byte-per-byte (kecuali timestamp) — data integrity aman. `malas:migrate-data` juga dites terpisah (SQLite → SQLite scratch DB) — 34 tabel, semua baris tersalin sesuai jumlah sumber.
-
----
-
-## 2026-08-22 — Fix: Download/Import Backup Database 500 di SQLite (Dev)
-
-- **Bug nyata dilaporkan user**: setelah fix 403 di atas (`hasRole()` → `isSuperAdmin()`), akses `/admin/settings/database/download` di `malas.test` malah balikin 500 "Terjadi Kesalahan" — user bilang errornya nggak muncul di log.
-- **Investigasi**: error-nya beneran ADA di `storage/logs/laravel.log` (ketemu match persis timestamp request user) — `SQLSTATE[HY000]: General error: 1 near "SHOW": syntax error ... SQL: SHOW TABLES`. `.env` `malas.test` confirmed `DB_CONNECTION=sqlite` (sesuai konvensi dev project ini, lihat `CLAUDE.md`), sedangkan `DatabaseBackupController` ditulis MySQL-only dari awal (`SHOW TABLES`, `SET FOREIGN_KEY_CHECKS=0/1`) — kedua sintaks itu nggak dikenal SQLite. Bug ini sebelumnya ketutup total sama bug 403 (request nggak pernah nyampe ke kode yang rusak ini).
-- **Fix**: `getBackupTables()` sekarang branch berdasarkan `DB::connection()->getDriverName()` — SQLite pakai `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`, selain itu tetap `SHOW TABLES`. FK-check toggle (dipakai di `download()` sebelum/sesudah dump, dan `import()` sebelum/sesudah transaksi + di catch/rollback) dipusatkan ke helper baru `fkChecksStatement(bool $enable)` yang emit `PRAGMA foreign_keys = ON/OFF;` untuk SQLite atau `SET FOREIGN_KEY_CHECKS=1/0;` untuk MySQL. `import()` juga skip baris FK-check mentah dari file upload (regex `^(SET\s+FOREIGN_KEY_CHECKS|PRAGMA\s+foreign_keys)`) dan selalu pakai `fkChecksStatement()` yang sesuai driver AKTIF sekarang — sengaja didesain biar backup lintas-driver (mis. export dari SQLite dev, import ke MySQL prod) tetap jalan, karena statement `INSERT`/`DELETE`-nya sendiri driver-agnostic.
-- Diverifikasi end-to-end lewat HTTP (ad-hoc server + SQLite dev database, environment sama persis dengan `malas.test`): `GET .../download` → 200 dengan file `.sql` valid (`PRAGMA foreign_keys = OFF;` muncul, bukan lagi 500), lalu `POST .../import` pakai file itu sendiri → 302 sukses tanpa error baru di log, dan `GET .../download` lagi setelah import menghasilkan file identik byte-per-byte (kecuali baris timestamp) dengan backup sebelumnya — membuktikan round-trip export→import nggak merusak data.
+- **My Collection — view toggle became a single sliding control**: the two separate grid/table buttons were replaced with one pill with a CSS sliding indicator (`ViewToggle`), adding a third **Compact** view (dense text-only rows). The card grid was enlarged (160px → 190px min-width) so the hover overlay is not cramped.
+- **Desktop hover overlay (grid & compact)**: reading progress, +/- stepper, "Mark all as read", and the "Continue to Vol. X" button appear on hover (`opacity-0`/`group-hover:opacity-100`, only at `md:` and up) — previously there was only a plain stepper.
+- **Mobile adaptation**: hover does not exist on touch devices, so on mobile all the controls above are always visible (not waiting for hover) — the grid card shows progress+stepper+menu below the cover (not an overlay on top of the cover), and the compact row becomes 2 lines. A new `⋮` menu (`RowActionsMenu`, 4-item dropdown: View Details/Continue to Vol X/Mark all as read/Delete) closes the access gap for actions that on desktop only appear on hover.
+- **Animation**: uses Tailwind/`tw-animate-css`, already the standard in this project (toggle indicator slides via `transform`, overlay fade/translate, `active:scale-90/95` on buttons) — deliberately **not** adding Anime.js because every animation need here is pure CSS transition/transform and needs no JS orchestration.
+- **Skeleton loading**: `GridSkeleton`/`CompactSkeleton`/`TableSkeleton` were added for the "Refresh" state, replacing the previous blank state.
+- **Tag Filter (tree per category) in Catalog** — piggybacks on the same "Genre Filter" popover (not a new button) so the filter bar doesn't get longer. AniList tag data (name + category, e.g. "Isekai" → "Theme-Reincarnation") was **already** fetched from the start (used to generate `themes`/`demographics`) but then discarded — now it is stored in full (filtered to minimum rank 60 on the AniList relevance scale, non-spoiler) into the new column `series.tags` (flat array of names, used with `whereJsonContains` — same pattern as `genres`) and `series.tag_categories` (name→category map, only used to build the tree, NEVER part of a WHERE clause). One data source (AniList) as the user requested — old series need a re-sync ("Sync AniList" in Edit Series) to fill these fields.
+- Tag categories are turned into a tree from the part before the first hyphen in the raw AniList category ("Theme-Reincarnation" → parent "Theme"), collapsible but still fully rendered in the DOM so the same search box can still filter tags inside collapsed categories.
+- Verified end-to-end with a real browser + HTTP: sliding indicator, hover overlay hidden by default (checked via computed style), mobile breakpoint (resized to 375px, checked `offsetParent` to account for ancestor `display:none`, not just the element's own computed style), the 4-item dropdown actually clicked and its contents correct, and the tag filter in Catalog actually filters results (tested with 2 dummy series with different tags, filter results matched exactly).
+- **Bug found during verification** (not in this feature's code): the `.claude/launch.json` "Laravel Dev" config pointed to a bare `php` that does not resolve in this environment — fixed with a wrapper script (`.claude/php-dev.bat`, gitignored, local only) that calls Herd's PHP with the required extension flags.
+- **Fix: the My Collection grid hover overlay overlapped the info panel below it** — `AdultBlurOverlay` turned out to create its own `div.relative` for the cover, so the hover overlay written as its sibling (not child) was not clipped by that cover's `overflow-hidden`; the overlay, which was `absolute inset-x-0 bottom-0` (open height, only anchored to the bottom), could become taller than the cover box when it had a lot of content. A real bug found by the user through a screenshot, not caught by the earlier computed-style verification (which only checked opacity/pointer-events, not the bounding box). Fix + simplification (follow-up user feedback): the outer overlay wrapper stays `absolute inset-0` for safety (clamped exactly to the cover), but the wrapper itself is transparent — the dark background+blur moved into an auto-height inner panel, so visually it only covers the bottom part of the cover (not the whole image), exactly like the original design. Also removed: the (+/-) stepper that was always shown in the info panel under the genre badge (redundant with the stepper in the overlay), and the "Mark all as read" button and "⋮" trigger inside the overlay (both are already reachable via right-click/the mobile dropdown) — the overlay is now much more compact (just progress+stepper+continue-reading button).
+- **Right-click (context menu) added to My Collection grid & compact views** — previously only the table view had it, and with only 2 items. Now all three views (grid/compact/table) share the same menu contents (`RowContextMenuItems`, 4 items: View/Continue to Vol X/Mark all as read/Delete) — exactly the same as the existing "⋮" dropdown, consistent with the right-click pattern already used in `Admin/Series/Index.tsx`.
+- **New document `docs/API.md`** — a complete reference of all Laravel routes (method, path, route name, controller@action, access level, response type: Inertia page/JSON/Redirect/File download), generated from `php artisan route:list` + return-type detection from controller source (not just guessing from route names). It is **not** a formal OpenAPI/REST specification — Malas is an Inertia app, not an API for external consumers, so this is purely an internal reference. Linked from README.md/README.id.md.
 
 ---
 
-## 2026-08-16 (lanjutan 4) — Fix: Download/Import Backup Database 403 Buat Super Admin Asli
+## 2026-08-23 — Docker Deploy (Postgres) + Deploy File Structure Cleanup
 
-- **Bug nyata dilaporkan user**: akses `/admin/settings/database/download` sebagai super_admin asli malah kena 403 "Akses Ditolak".
-- **Root cause**: `DatabaseBackupController::download()`/`import()` pakai `auth()->user()->hasRole('super_admin')` — method dari Spatie Laravel Permission. App ini **nggak pernah** manggil `assignRole()` di mana pun, jadi tabel `model_has_roles` Spatie selalu kosong dan `hasRole()` selalu balikin `false`, padahal kolom `users.role` (yang beneran dipakai di seluruh app buat Policy/menu access) udah bener `super_admin`. Dua mekanisme otorisasi paralel yang nggak pernah disinkronkan — satu-satunya tempat di codebase yang pakai Spatie `hasRole()` (sisanya konsisten pakai `User::isAdmin()`/`isSuperAdmin()`, termasuk `AiSettingController`/`MailSettingController` yang fiturnya identik).
-- **Fix**: ganti `hasRole('super_admin')` → `isSuperAdmin()` di kedua method (`download()` dan `import()`), konsisten sama pola yang udah bener di seluruh app.
-- **Root cause dokumentasi**: `CLAUDE.md` bagian "Sistem Otorisasi" sendiri yang dulu nyaranin pola `hasRole('super_admin')` sebagai "pengecualian yang boleh" — udah diperbaiki, sekalian ditambah catatan eksplisit "jangan pernah pakai Spatie `hasRole()`" biar bug yang sama nggak kejadian lagi di kode baru.
-- Diverifikasi: `User::isSuperAdmin()` untuk akun super_admin asli sekarang balikin `true` (lolos `abort_unless`), dikonfirmasi langsung lewat tinker + trace log request HTTP (403 sebelumnya ilang, request lanjut ke logic backup — sisa 500 di local testing itu murni `SHOW TABLES` MySQL-only ketemu SQLite dev, bukan bug dari fix ini).
-
----
-
-## 2026-08-16 (lanjutan 3) — Reveal API Key/Secret di Admin Settings (Ikon Mata)
-
-- Request user langsung: tiga secret di halaman Admin Settings (`secret_access_key` Storage, `api_key` AI, `api_key` Mail) sekarang bisa dilihat nilainya lewat toggle ikon mata (Eye/EyeOff), bukan lagi disembunyikan total kayak sebelumnya (dulu cuma kirim `has_key`/`has_secret` boolean ke frontend, field-nya selalu kosong).
-- Aman dari sisi otorisasi karena halaman ini **sudah** `super_admin`-only lewat `StorageSettingPolicy` — reveal ini nggak nambah expose ke audience baru, cuma ngasih akses balik ke admin yang emang udah pegang kendali penuh atas value itu (bisa reset kapan aja lewat form yang sama).
-- Backend (`StorageSettingController::edit()`) sekarang kirim `secret_access_key`/`api_key` asli (udah otomatis ke-decrypt lewat cast `encrypted` di model) ke frontend, bukan cuma boolean `has_key`/`has_secret` (boolean-nya tetap dikirim, dipakai buat required-field marker `*`).
-- Frontend: komponen baru `SecretInput` (`Admin/Settings/Index.tsx`) — wrapper `Input` + tombol ikon mata yang toggle `type="password"`/`type="text"`, dipakai di tiga tempat (AI, Mail, Storage tab) lewat `Controller` react-hook-form (field-nya sekarang di-prefill sama value asli, bukan string kosong).
-- Translation key `apiKeyPlaceholder`/`apiKeySaved`/`secretAccessKeyPlaceholder` di `admin.json` (id/en/ja) jadi dead code setelah perubahan ini (nggak relevan lagi begitu field-nya prefilled sama value asli) — dihapus. Deskripsi kartu ("API key disimpan terenkripsi, tidak pernah ditampilkan ulang setelah disimpan") juga diupdate karena udah nggak akurat.
-- Diverifikasi di Browser: field API key AI ke-load dengan value asli (masked), klik ikon mata → `type` berubah ke `text` dan value asli kebaca persis, klik lagi → balik ke masked. Submit form tanpa ubah apa-apa → key tetap utuh di database (nggak ke-null-kan/rusak).
+- **User request**: add a third deploy method (Docker, generic for Proxmox LXC/VM but portable to any Linux), with a fully Postgres database (for consistency with the other microservices), make sure old data is copied into the new database, and tidy up the messy infrastructure files in the root.
+- **`DatabaseBackupController` is now 3-driver-aware** (SQLite/MySQL/Postgres): added a Postgres branch in `getBackupTables()` (`pg_catalog.pg_tables`) and `fkChecksStatement()` (`SET session_replication_role = replica/origin` — Postgres has no global FK toggle like MySQL/SQLite). Identifier quoting in the SQL dump now follows the active driver (backticks for MySQL/SQLite, `"double quote"` for Postgres) through the new helpers `identifierQuoteChar()`/`quoteIdentifier()`.
+- **New command `php artisan malas:migrate-data --from= --to=`** (`MigrateDatabaseData.php`) — for data migration during a DB engine cutover (e.g. old SQLite/MySQL → new Postgres). Copies data row by row through the Laravel query builder (`cursor()` + `array_chunk`), not through SQL dump text — so it is fully driver-agnostic, regardless of SQL dialect differences between the three engines. Unlike a regular `.sql` backup (which deliberately skips the `users` table), this command copies **all** tables because it is meant for a full cutover.
+- **New Docker stack** (`deploy/`): `Dockerfile` (multi-stage: Node asset build → Composer install → PHP-FPM runtime, extensions `pdo_pgsql`/`gd`/`intl`/etc.), `docker-compose.yml` (services `app`, `queue`, `nginx`, `db`=Postgres 16), `docker-compose.override.yml` (local dev: bind-mount source + a `vite` service for HMR), `nginx.conf`, `.env.docker.example`.
+- **Script `deploy/deploy-docker.sh`** — generic, only needs Docker Engine + the Compose plugin on the host (Proxmox LXC/VM or any Linux, **not** using the Proxmox API at all): sets up `.env`, generates `APP_KEY`, builds and runs the stack, migrates+seeds, offers to migrate old data (calls `malas:migrate-data`), then caches for production. `deploy/update-docker.sh` updates code on a running deploy (same pattern as the native `update.sh`).
+- **File structure tidy-up**: `deploy.sh`/`update.sh` (native, existing) moved to `deploy/deploy.sh`/`deploy/update.sh` (the `$SCRIPT_DIR` path resolution was updated to `cd` up one level, since they are now one folder deeper than the root). The project root is now clean — every deploy method lives in one place under `deploy/`. Path references updated in `README.md`, `README.id.md`, `docs/DEPLOYMENT.md`.
+- **New document `docs/DOCKER.md`** — a complete guide to the Docker method: when to use it vs native, prerequisites (including the nesting note for unprivileged Proxmox LXC), migrating data from an old install, code updates, HTTPS, troubleshooting.
+- **New `.dockerignore`** — without it, `COPY . .` in the Dockerfile also copies the local `bootstrap/cache/*.php` (gitignored, but present on the dev disk) which still references `Laravel\Breeze\BreezeServiceProvider` from `require-dev` — making `composer dump-autoload` fail completely in the `vendor` stage because Breeze is not installed with `--no-dev`. Found directly while building the real image, not just by reading code.
+- **Permission bug found & fixed**: the non-root `malas` user in the runtime image was initially only `chown`ed for `storage/` and `bootstrap/cache/`, not `public/` — making `php artisan storage:link` fail (`symlink(): Permission denied`) because it needs to write a new symlink inside `public/`. Fix: add `public/` to the `chown` list in the `Dockerfile`.
+- **Verified end-to-end with real Docker** (not just by reading code): `docker build` succeeded, `docker compose up` ran app+queue+nginx+db, 44 migrations ran cleanly on real Postgres (zero SQL dialect issues — all of this app's queries already go through Eloquent/the query builder, only `DatabaseBackupController` has raw SQL), `storage:link`+seed succeeded after the permission fix, the landing page returned 200 through nginx→PHP-FPM→Postgres, login via magic link succeeded, the Postgres backup download produced a valid `.sql` (`SET session_replication_role = replica;` + `"double-quoted"` identifiers), the re-import returned 302 successfully with zero new log errors, and a re-download afterwards was byte-for-byte identical (except timestamps) — data integrity is safe. `malas:migrate-data` was also tested separately (SQLite → SQLite scratch DB) — 34 tables, all rows copied matching the source counts.
 
 ---
 
-## 2026-08-16 (lanjutan 2) — Badge "Volume Kurang" Bisa Diklik, Auto-Isi Form Tambah Volume
+## 2026-08-22 — Fix: Database Backup Download/Import 500 on SQLite (Dev)
 
-- User nanya "terus diapain" soal badge "volume kurang" yang masih sekadar informational — ditambahin aksi: badge sekarang `<Link>` ke halaman detail koleksi dengan query param `?addVolumes=4,6-7,9-12`.
-- `Collection/Show.tsx` baca query param itu sekali di `useEffect` pas mount, langsung prefill field nomor volume di form "Tambah Volume" + auto-buka dialognya (nggak perlu klik tombol "Tambah Volume" lagi), terus bersihin param dari URL bar (`window.history.replaceState`) biar refresh/tombol back browser nggak ke-trigger ulang.
-- Alurnya sekarang: klik badge → dialog "Tambah Volume" langsung kebuka dengan nomor yang kurang udah keisi → user tinggal pilih format → submit. Dari 4 langkah (lihat nomor, buka detail, buka dialog, ketik ulang) jadi 2 (klik badge, pilih format+submit).
-- Diverifikasi end-to-end di Browser (bukan curl — tool Browser pane udah pulih di sesi ini): koleksi dummy 5/12 volume → klik badge "7 kurang" → dialog kebuka dengan input `"4, 6-7, 9-12"` persis, URL bar bersih (query param ilang) → submit → koleksi jadi 12/12.
-
----
-
-## 2026-08-16 — Badge "Volume Kurang" (Next Volume to Buy) di Koleksiku
-
-- Fitur baru hasil diskusi ("next volume to buy") — tiap koleksi yang punya `series.total_volumes` diketahui, sistem hitung selisih antara `range(1, total_volumes)` dan volume yang udah dimiliki user (`CollectionVolume.volume_number`), lalu tampilin sebagai badge amber `{{count}} kurang` di grid card & table row `Collection/Index.tsx`. Hover badge-nya buka `HoverCard` yang nampilin nomor lengkap, dikompres pakai syntax range yang sama dipakai form "Tambah Volume" (mis. `4, 6-7, 9-12`) lewat fungsi baru `compressRanges()`.
-- `total_volumes` dari AniList/RanobeDB udah representasi volume yang **sudah rilis** (bukan proyeksi total planned), jadi nggak perlu logic tambahan buat filter "belum rilis" — semua nomor di `range(1, total_volumes)` yang belum dimiliki otomatis valid buat di-flag "kurang". Series dengan `total_volumes` null (data AniList belum lengkap) di-skip, nggak dihitung.
-- Badge di-`stopPropagation()` biar klik/hover-nya nggak nge-trigger navigasi ke halaman detail koleksi (pola yang sama dengan tombol hapus & `ReadStepper` yang udah ada di file yang sama).
-- Diverifikasi lewat HTTP request langsung (curl, browser pane masih ada gangguan tool di sesi ini) — koleksi dummy dengan volume `[1,2,3,5,8]` dari total 12 → `missing_volumes` server balikin persis `[4,6,7,9,10,11,12]`; koleksi lengkap (3/3) → array kosong, badge nggak muncul (dicek via kondisi `missing.length === 0` di komponen).
+- **Real bug reported by the user**: after the 403 fix above (`hasRole()` → `isSuperAdmin()`), accessing `/admin/settings/database/download` on `malas.test` returned 500 "An Error Occurred" — the user said the error did not appear in the log.
+- **Investigation**: the error actually WAS in `storage/logs/laravel.log` (found a match at the exact timestamp of the user's request) — `SQLSTATE[HY000]: General error: 1 near "SHOW": syntax error ... SQL: SHOW TABLES`. The `malas.test` `.env` confirmed `DB_CONNECTION=sqlite` (per this project's dev convention, see `CLAUDE.md`), while `DatabaseBackupController` was written MySQL-only from the start (`SHOW TABLES`, `SET FOREIGN_KEY_CHECKS=0/1`) — neither syntax is understood by SQLite. This bug was previously completely hidden by the 403 bug (requests never reached the broken code).
+- **Fix**: `getBackupTables()` now branches on `DB::connection()->getDriverName()` — SQLite uses `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`, otherwise it stays `SHOW TABLES`. The FK-check toggle (used in `download()` before/after the dump, and in `import()` before/after the transaction + in catch/rollback) is centralized in a new helper `fkChecksStatement(bool $enable)` that emits `PRAGMA foreign_keys = ON/OFF;` for SQLite or `SET FOREIGN_KEY_CHECKS=1/0;` for MySQL. `import()` also skips raw FK-check lines from the uploaded file (regex `^(SET\s+FOREIGN_KEY_CHECKS|PRAGMA\s+foreign_keys)`) and always uses the `fkChecksStatement()` matching the CURRENT active driver — deliberately designed so cross-driver backups (e.g. export from dev SQLite, import into prod MySQL) still work, since the `INSERT`/`DELETE` statements themselves are driver-agnostic.
+- Verified end-to-end over HTTP (ad-hoc server + SQLite dev database, exactly the same environment as `malas.test`): `GET .../download` → 200 with a valid `.sql` file (`PRAGMA foreign_keys = OFF;` present, no longer 500), then `POST .../import` with that same file → 302 success with no new errors in the log, and `GET .../download` again after the import produced a file byte-for-byte identical (except the timestamp line) to the previous backup — proving the export→import round trip does not corrupt data.
 
 ---
 
-## 2026-08-15 (lanjutan 5) — Export/Import Koleksi (Backup Pribadi)
+## 2026-08-16 (part 4) — Fix: Database Backup Download/Import 403 for the Real Super Admin
 
-- Fitur baru atas request user: user bisa export seluruh koleksi (+ progres baca, review, rating) ke file JSON dan import balik. Tombol "Export"/"Import" di header `Collection/Index.tsx`.
-- **Export** (`CollectionController::export()`) — `response()->streamDownload()` (pola sama `DatabaseBackupController`), filename `malas-koleksi-{username}-{tanggal}.json`. Isi tiap entry: identifier series (`anilist_id`, `ranobedb_id`, `mal_id`, `slug` — dikirim semua sekaligus biar matching pas import tetap robust walau salah satu berubah/kosong), condition, acquired_at, notes, personal_rating, personal_review, dan full volume list (nomor, format, ebook_source, language, read_at).
-- **Import** (`CollectionController::import()`) — upload file JSON, validasi struktur (`version`+`collections` array) sebelum disentuh, wrapped `DB::beginTransaction()`. Matching series berurutan: `anilist_id` → `ranobedb_id` → `mal_id` → `slug`, dicari di katalog **lokal** (bukan fetch AniList otomatis — keputusan sengaja, biar nggak duplikasi logic `AniListController::import()`; kalau series belum ada di katalog lokal, entry itu di-skip dan dihitung terpisah). Series yang udah ada di koleksi user juga di-skip (**append-only**, sesuai konfirmasi user — bukan overwrite). Semua field volume (`format`/`ebook_source`/`language`) dan `condition` di-whitelist lewat `sanitizeEnum()` sebelum insert — file upload user nggak dipercaya mentah-mentah. Hasil dilaporkan lewat flash: "X diimpor, Y dilewati (sudah dimiliki atau tidak ada di katalog)".
-- Diverifikasi end-to-end lewat HTTP request langsung (curl, bukan browser — ada gangguan tool browser pane sesi ini): export user A dengan 2 koleksi (termasuk rating/review/2 volume) → JSON lengkap dan akurat; import ke user B yang udah punya 1 dari 2 series itu → cuma 1 series baru yang ke-import, yang lama nggak ke-duplikat/ke-timpa; entry dengan series yang nggak ada di katalog lokal → di-skip graceful, nggak crash; file JSON invalid/rusak → ditolak dengan pesan error, bukan 500.
-
----
-
-## 2026-08-15 (lanjutan 4) — Nonaktifkan Sementara Generate Funfact AI
-
-- Atas permintaan user, fitur generate funfact AI (auto-generate + tombol "Generate Ulang" + teks funfact) dinonaktifkan sementara lewat konstanta `DashboardController::FUNFACT_GENERATION_ENABLED = false`. Word cloud genre (bagian non-AI dari kartu "Selera Genre" yang sama) **tetap** tampil normal — cuma bagian AI-nya yang di-skip. `regenerateFunfact()` juga dikasih guard 404 defensif kalau ada request nyasar ke endpoint itu selagi dinonaktifkan. Nggak ada penghapusan kode/data — tinggal balikin konstanta ke `true` buat ngaktifin ulang.
+- **Real bug reported by the user**: accessing `/admin/settings/database/download` as the real super_admin returned 403 "Access Denied".
+- **Root cause**: `DatabaseBackupController::download()`/`import()` used `auth()->user()->hasRole('super_admin')` — a method from Spatie Laravel Permission. This app **never** calls `assignRole()` anywhere, so Spatie's `model_has_roles` table is always empty and `hasRole()` always returns `false`, even though the `users.role` column (which is what the whole app actually uses for Policy/menu access) was correctly `super_admin`. Two parallel authorization mechanisms that were never synchronized — the only place in the codebase using Spatie's `hasRole()` (everything else consistently uses `User::isAdmin()`/`isSuperAdmin()`, including `AiSettingController`/`MailSettingController`, whose features are identical).
+- **Fix**: replace `hasRole('super_admin')` → `isSuperAdmin()` in both methods (`download()` and `import()`), consistent with the pattern already correct across the whole app.
+- **Documentation root cause**: `CLAUDE.md`'s own "Authorization System" section used to suggest the `hasRole('super_admin')` pattern as an "allowed exception" — fixed, plus an explicit note added "never use Spatie `hasRole()`" so the same bug doesn't happen again in new code.
+- Verified: `User::isSuperAdmin()` for the real super_admin account now returns `true` (passes `abort_unless`), confirmed directly through tinker + an HTTP request log trace (the earlier 403 is gone and the request continues into the backup logic — the remaining 500 in local testing was purely MySQL-only `SHOW TABLES` meeting the SQLite dev DB, not a bug from this fix).
 
 ---
 
-## 2026-08-15 (lanjutan 3) — Fix Layout Modal, URL Koleksi Pakai Judul, Konfirmasi+Undo Hapus dari Grup, Hapus Puter.js
+## 2026-08-16 (part 3) — Reveal API Key/Secret in Admin Settings (Eye Icon)
 
-- **Fix layout modal "Tambah Manga"**: filter tipe ketutupan dan modal ikut nge-scroll — root cause div list item (`min-h-[360px] flex-1 overflow-y-auto`) punya floor tinggi 360px yang bisa lebih besar dari sisa ruang yang dialokasikan flexbox (`max-h-[85vh]` dikurangi tinggi header/search/filter/footer), jadi begitu grid item cukup panjang, seluruh `DialogContent` kepaksa lebih tinggi dari `max-h-[85vh]` alih-alih cuma div itu doang yang scroll — filter ke-dorong keluar viewport. Fix: `min-h-[360px]` → `min-h-0` (biar flex item bisa nyusut penuh sesuai sisa ruang), plus `shrink-0` eksplisit di header/search/filter/footer biar nggak ikut kekompres.
-- **URL `/my-collection` pakai judul series, bukan UUID** — request user "url my collection masih pake random string, bukan judul koleksinya". `Collection::resolveRouteBinding()` baru: cocokkan lewat slug Series-nya (`whereHas('series', fn ($q) => $q->where('slug', $value))`), **dibatasi ke koleksi milik user yang login** (dua user bisa sama-sama koleksi series yang sama, satu `Series::slug` "dipakai" banyak `Collection`) — fallback ke id kalau nggak ketemu. Nggak nambah kolom `slug` baru sama sekali di tabel `collections`, tinggal reuse `series.slug` yang udah unik global. Enam file frontend + controller yang generate link `collection.show` diupdate: `SearchController`/`GlobalSearch.tsx`, `Catalog/Show.tsx` (reuse `series.slug` yang udah ada di props, nggak perlu query tambahan), `CollectionController::index()`/`Collection/Index.tsx`, `CollectionGroupController::show()`/`CollectionGroups/Show.tsx`, `DashboardController::continueReading()`/`Dashboard.tsx`, `LoanController::index()`/`Loans/Index.tsx`. Endpoint aksi (PATCH/POST/DELETE di belakang `/my-collection/{collection}/...`, bukan navigasi GET) sengaja **tetap** pakai `collection.id` mentah — itu bukan URL yang dibaca/di-bookmark user.
-- **Konfirmasi + Undo buat hapus manga dari grup** — sebelumnya tombol X di `CollectionGroups/Show.tsx` langsung `router.delete()` tanpa konfirmasi apa pun, dan toast suksesnya nggak ada tombol Undo (padahal aturan wajib CLAUDE.md: semua aksi reversible wajib ada Undo). Ditambah dialog konfirmasi (pola sama dengan dialog Hapus Grup di file yang sama) sebelum beneran hapus, dan `CollectionGroupController::removeItem()` sekarang kirim `undo_url`/`undo_payload` — route PATCH baru `collection.groups.items.undoRemove` → `undoRemoveItem()` yang re-attach pivot-nya (bukan hard-delete, jadi undo-nya simpel, nggak perlu rekonstruksi payload rumit kayak `CollectionController::undoDestroy()`).
-- **Puter.js dihapus total** — request user langsung "kita hapus integrasi puter". Dicopot: `resources/js/lib/puter.ts` (file dihapus), tag `<script src="https://js.puter.com/v2/">` di `app.blade.php`, opsi "Puter" dari dropdown provider AI (`Admin/Settings/Index.tsx`) plus validasi `Rule::in()` di `AiSettingController`, cek `provider === 'puter'` di `AiFunfactService`. Default provider baru: `gemini` (ganti dari `puter`, tapi tetap butuh API key — kalau kosong otomatis fallback ke `AiFunfactService::fallbackText()`, teks statis dari data genre, bukan AI). Endpoint yang cuma dipakai buat flow client-side generate Puter — `dashboard.funfact.auto-save` dan `dashboard.funfact.report-error` (plus method controllernya, `saveAutoGeneratedFunfact()`/`reportFunfactError()`) — jadi dead code total begitu Puter dicopot, ikut dihapus. Migration baru normalisasi baris `ai_settings.provider = 'puter'` lama (kalau ada) jadi `'gemini'`.
-- Diverifikasi semua lewat Browser tool: modal filter kelihatan penuh + cuma grid item yang scroll (bukan seluruh dialog), klik card koleksi/grup nge-navigate ke `/my-collection/{judul-series}`, klik hapus dari grup munculin dialog konfirmasi dulu, toast abis hapus ada tombol Undo yang beneran ngembaliin item, tab provider AI admin cuma nampilin Gemini/OpenAI/Claude (Puter nggak ada lagi), tombol "Generate Ulang" funfact tetap jalan normal (gagal graceful lewat jalur server biasa, bukan crash referencing Puter).
-
----
-
-## 2026-08-15 (lanjutan 2) — Modal "Tambah Manga" Lebih Lebar + Infinite Scroll
-
-- **Modal beneran dilebarin**: request user "bikin modal add manga to group lebih lebar" ternyata nemuin bug lain — `max-w-7xl` yang dipasang di Phase 28 nggak pernah kepakai! `ui/dialog.tsx` punya base style `sm:max-w-sm` bawaan, dan class custom TANPA prefix `sm:` (kayak `max-w-7xl` polos) kalah di cascade Tailwind begitu viewport ≥640px — dialog diam-diam tetap 384px dari awal. Fix: `sm:max-w-7xl` (bukan `max-w-7xl` doang). Diverifikasi langsung lewat `getComputedStyle` di Browser tool — sebelum fix `computedMaxWidth: "384px"`, sesudah fix `"1280px"`.
-- **Infinite scroll gantiin `<Pagination>`**: request user eksplisit "infinite scrolling bukan pake paginate". List "koleksi yang bisa ditambahkan" sekarang nge-accumulate hasil tiap halaman ke state lokal (`accumulated`), fetch halaman berikutnya otomatis pas discroll mendekati bawah — bukan klik nomor halaman manual.
-  - Percobaan pertama pakai `IntersectionObserver` **gagal kedeteksi** pas verifikasi di Browser tool — root cause: `useEffect` yang bikin observer jalan SEBELUM DOM sentinel-nya ke-mount (Dialog content Base UI mount satu tick setelah `addOpen` jadi `true`), dan dependency array effect nggak pernah retrigger begitu ref-nya kepasang. Percobaan kedua pindah ke ref-callback pattern (observer dibikin pas node sentinel beneran mount) — tapi observer-nya tetep nggak pernah fire sama sekali di lingkungan Browser tool ini (bahkan `observe(document.body)` juga nggak pernah callback), kemungkinan karena tab nggak lagi compositing frame aktif (lihat error "Browser pane is not displayed" pas nyoba screenshot).
-  - **Solusi final**: ganti total ke `onScroll` handler biasa (cek `scrollHeight - scrollTop - clientHeight < 300`) — nggak bergantung ke rendering/compositing pipeline, lebih gampang diverifikasi (bisa di-trigger manual lewat `dispatchEvent(new Event('scroll'))`), dan hasilnya beneran jalan: diverifikasi 50 item dummy ke-load 24 → 48 → 50 lewat dua kali scroll, masing-masing ngirim persis satu request (`page=2` lalu `page=3`), nggak ada request duplikat/berlebih setelah semua halaman abis.
-- **Bug sejenis kemungkinan ada di tempat lain**: `Admin/Series/Edit.tsx` (`max-w-3xl`) dan `User/Collection/Index.tsx` (`max-w-4xl`) juga pakai pola `max-w-*` tanpa prefix `sm:` — belum diverifikasi/di-fix di sesi ini (di luar scope, di-flag sebagai task terpisah). `Admin/ActivityLog/Index.tsx` udah bener dari awal (`sm:max-w-2xl`).
-- `CLAUDE.md` bagian "React Components" ditambah aturan eksplisit soal `sm:` prefix wajib buat override lebar `DialogContent`, biar nggak kejadian lagi.
+- Direct user request: the three secrets on the Admin Settings page (Storage `secret_access_key`, AI `api_key`, Mail `api_key`) can now be viewed through an eye icon toggle (Eye/EyeOff), instead of being fully hidden as before (previously only `has_key`/`has_secret` booleans were sent to the frontend, and the field was always empty).
+- Safe from an authorization standpoint because this page is **already** `super_admin`-only through `StorageSettingPolicy` — this reveal does not expose anything to a new audience, it just gives access back to the admin who already has full control over the value (and can reset it at any time through the same form).
+- Backend (`StorageSettingController::edit()`) now sends the real `secret_access_key`/`api_key` (already auto-decrypted through the model's `encrypted` cast) to the frontend, not just the boolean `has_key`/`has_secret` (the boolean is still sent, used for the required-field marker `*`).
+- Frontend: new `SecretInput` component (`Admin/Settings/Index.tsx`) — an `Input` wrapper + eye icon button that toggles `type="password"`/`type="text"`, used in three places (AI, Mail, Storage tabs) through react-hook-form's `Controller` (the field is now prefilled with the real value, not an empty string).
+- The translation keys `apiKeyPlaceholder`/`apiKeySaved`/`secretAccessKeyPlaceholder` in `admin.json` (id/en/ja) became dead code after this change (no longer relevant once the field is prefilled with the real value) — removed. The card description ("API key is stored encrypted, never shown again after saving") was also updated because it was no longer accurate.
+- Verified in the Browser: the AI API key field loaded with the real value (masked), clicking the eye icon → `type` changed to `text` and the real value read back exactly, clicking again → back to masked. Submitting the form without changing anything → the key stayed intact in the database (not nulled/corrupted).
 
 ---
 
-## 2026-08-15 — Fix: Blank Screen Buka Grup Koleksi (Slug Kosong + Guest Crash), README Bebas Emoji
+## 2026-08-16 (part 2) — "Missing Volumes" Badge Is Clickable, Auto-Fills the Add Volume Form
 
-- **Bug #1 (root cause asli)**: user punya grup koleksi ("RomCom") yang dibuat SEBELUM migration slug (Phase 28) — kolom `slug` ditambah `nullable()` biar migration nggak gagal di data lama, tapi lupa di-backfill. Grup itu kesimpen dengan `slug = NULL` selamanya. Begitu frontend (`Index.tsx`/`Show.tsx`) mulai generate semua link pakai `group.slug`, link ke grup ini jadi rusak (`route('collection.groups.show', null)`), navigasi gagal → **blank screen**. Ini penyebab utama laporan user, bukan cuma soal guest.
-  - Fix: migration baru `2026_08_15_090000_backfill_collection_groups_slug.php` — backfill semua `collection_groups.slug` yang masih NULL pakai `CollectionGroup::generateUniqueSlug()`, pola identik dengan backfill slug Series (`2026_08_02_090000_add_slug_to_series_table.php`). Diverifikasi langsung: grup "RomCom" dapet slug `sehnauoi-romcom`, halaman Index dan Show dua-duanya ke-render normal setelah backfill (dicek pakai Browser tool langsung, bukan curl — link `href` di Index sekarang beneran ngarah ke slug yang benar, klik masuk ke halaman detail sukses tanpa JS error).
-- **Bug #2**: `CollectionGroups/Show.tsx` selalu render lewat `UserLayout`, yang berasumsi ada user login (`AccountSwitcher.tsx` akses `auth.user!` — non-null assertion). Untuk guest (belum login) yang buka grup **publik**, `auth.user` itu `null` lewat `HandleInertiaRequests`, jadi React crash begitu nyoba render sidebar/account switcher → blank screen juga, tapi kasus terpisah dari Bug #1 (cuma kena guest, Bug #1 kena siapa aja termasuk owner login).
-  - Fix: tambah prop `is_guest` dari `CollectionGroupController::show()` (`$viewer === null`), lalu di `Show.tsx` pakai `Layout = is_guest ? PublicShell : UserLayout` — pola yang sama persis dengan `Profile/Show.tsx`. Breadcrumb ke `/collection-groups` (route auth-only) juga disembunyikan buat guest. Badge status publik/privat di header sekarang baca `group.is_public` yang sebenarnya, bukan selalu nampilin "Publik" buat non-owner (kena kasus admin liat grup privat orang lain).
-- Kedua bug nggak kena verifikasi Phase 27/28 karena verifikasi waktu itu cuma ngecek response JSON Inertia lewat curl (props server benar), bukan render React beneran di browser — jadi masalah slug NULL di data lama & crash client-side lolos.
-- **README.md & README.id.md dirombak** — semua emoji dicopot (badge bagian, header section, list fitur, bullet troubleshooting/backlog, tombol "back to top") atas permintaan user ("jangan gunakan emoji berlebih, lebih baik tidak ada sekalian"). Anchor link internal (`#troubleshooting`, dll) disesuaikan karena GitHub generate slug heading beda begitu emoji dicopot.
+- The user asked "so what do I do with it" about the "missing volumes" badge that was still merely informational — an action was added: the badge is now a `<Link>` to the collection detail page with the query param `?addVolumes=4,6-7,9-12`.
+- `Collection/Show.tsx` reads that query param once in a `useEffect` on mount, immediately prefills the volume number field in the "Add Volume" form + auto-opens its dialog (no need to click the "Add Volume" button), then cleans the param from the URL bar (`window.history.replaceState`) so a refresh/browser back button doesn't trigger it again.
+- The flow is now: click the badge → the "Add Volume" dialog opens right away with the missing numbers filled in → the user only picks the format → submit. From 4 steps (see the numbers, open the detail, open the dialog, retype) down to 2 (click the badge, pick the format+submit).
+- Verified end-to-end in the Browser (not curl — the Browser pane tool recovered in this session): a dummy collection with 5/12 volumes → click the "7 missing" badge → the dialog opened with the input `"4, 6-7, 9-12"` exactly, URL bar clean (query param gone) → submit → the collection became 12/12.
 
 ---
 
-## 2026-08-14 (lanjutan 9) — Grup Koleksi: Modal Diperbesar + Paginasi, Filter Tipe, Slug URL, Publik/Privat
+## 2026-08-16 — "Missing Volumes" Badge (Next Volume to Buy) in My Collection
 
-- **Modal "Tambah Manga" diperbesar & dipaginasi** — `max-w-3xl` → `max-w-5xl`, dan daftar koleksi yang bisa ditambahkan sekarang di-paginate server-side (24/halaman, `Pagination.tsx` yang sama dipakai di halaman list lain) supaya user bisa menjelajahi seluruh koleksinya, bukan cuma list pendek yang di-load sekali lalu difilter di client.
-- **Filter tipe** (Manga/Light Novel/One Shot/Doujinshi/Manhwa/Manhua, segmented control) ditambahkan di modal ini, reuse `useTypeFilterOptions()` — pola yang sama dengan filter tipe di halaman list lain (lihat aturan wajib di CLAUDE.md).
-- Pencarian & filter tipe di modal sekarang **server-side** (debounced `router.get` partial reload `only: ['available']`), bukan filter client-side atas array yang sudah di-load penuh — otomatis exclude manga yang udah ada di grup (`whereNotIn`) di level query, bukan cuma di UI.
-- **URL grup pakai slug, bukan UUID** — format `{username}-{nama-grup-slug}` (mis. `/collection-groups/testowner-romcom`), dibikin di `CollectionGroup::generateUniqueSlug()` (pola yang sama dengan `Series::generateUniqueSlug()`), regenerate otomatis kalau nama grup diubah. Fallback ke id kalau username belum ke-sync dari SSO.
-- **Opsi Publik/Privat per grup** — `Switch` di halaman detail grup (owner-only). Grup publik muncul di section baru "Grup Koleksi Publik" di profil publik pengguna (`ProfileController::publicGroups()`) dan bisa diakses siapa saja (termasuk guest) lewat URL langsung; grup privat cuma bisa dilihat pemiliknya (dan admin). Route `GET /collection-groups/{group}` dipindah ke luar grup middleware `auth` (sama polanya dengan `/u/{user}` profil publik) — visibilitas dicek manual di controller (`abort_unless($group->is_public || $isOwner || ...)`), bukan lewat middleware.
-- `PublicShell` (shell minimal buat halaman publik tanpa login — header + tombol login) diekstrak dari `Profile/Show.tsx` ke komponen bersama `Components/app/PublicShell.tsx`, dipakai juga di `CollectionGroups/Show.tsx` supaya guest yang buka grup publik nggak nabrak `UserLayout` yang butuh sesi login.
-- Migration baru: `collection_groups.slug` (unique) + `collection_groups.is_public` (default false).
-- **Bug ketemu & diperbaiki saat verifikasi HTTP langsung**: query `available` yang di-`join()` ke tabel `series` (buat urutkan berdasarkan judul & filter tipe) bikin `whereNotIn('id', ...)` ambigu — SQLite nggak tahu `id` itu punya tabel `collections` atau `series`, error `ambiguous column name: id`. Fix: qualify jadi `whereNotIn('collections.id', ...)`.
-- Live HTTP test lengkap: 30 koleksi dummy → filter tipe (manga vs novel) benar, search substring benar, pagination halaman 2 benar, tambah 2 item → langsung ke-exclude dari `available` (total 30→28), toggle publik → guest tanpa login bisa lihat grup (`is_owner: false`, `available: null`), toggle privat lagi → guest kena 403, rename grup → slug regenerate otomatis, profil publik pemilik grup menampilkan grup publik dengan cover collage. Data uji coba (user, koleksi, series, grup, token) dibersihkan dari database dev setelah verifikasi.
+- New feature from a discussion ("next volume to buy") — for every collection whose `series.total_volumes` is known, the system computes the difference between `range(1, total_volumes)` and the volumes the user already owns (`CollectionVolume.volume_number`), then shows it as an amber badge `{{count}} missing` on the grid card & table row in `Collection/Index.tsx`. Hovering the badge opens a `HoverCard` showing the full numbers, compressed with the same range syntax used by the "Add Volume" form (e.g. `4, 6-7, 9-12`) through the new function `compressRanges()`.
+- `total_volumes` from AniList/RanobeDB already represents volumes that have **been released** (not a projection of total planned), so no extra logic is needed to filter "not yet released" — every number in `range(1, total_volumes)` that isn't owned is automatically valid to flag as "missing". Series with a null `total_volumes` (incomplete AniList data) are skipped, not counted.
+- The badge uses `stopPropagation()` so clicking/hovering it doesn't trigger navigation to the collection detail page (same pattern as the delete button and `ReadStepper` already in the same file).
+- Verified through direct HTTP requests (curl, since the browser pane still had tool problems in this session) — a dummy collection with volumes `[1,2,3,5,8]` out of 12 → the server's `missing_volumes` returned exactly `[4,6,7,9,10,11,12]`; a complete collection (3/3) → empty array, no badge shown (checked via the `missing.length === 0` condition in the component).
 
 ---
 
-## 2026-08-14 (lanjutan 8) — Grup Koleksi Dirombak Total (ala MDList MangaDex)
+## 2026-08-15 (part 5) — Collection Export/Import (Personal Backup)
 
-- **Desain grouping di lanjutan 6 ternyata salah semantik** — user jelasin maksudnya "ala MDList MangaDex": grup itu objek pertama (dikasih nama, mis. "RomCom"), diisi banyak manga dari koleksi user — bukan sekadar label string tunggal per koleksi. Diganti total, bukan di-patch.
-- `CollectionGroup` model baru + pivot `collection_group_items` — **many-to-many**, satu manga bisa masuk lebih dari satu grup sekaligus. Kolom `collections.group_name` (desain lama) dihapus.
-- Halaman baru: `/collection-groups` (daftar grup, cover collage dari 4 manga pertama) → `/collection-groups/{group}` (isi grup — tambah manga dari koleksi lewat dialog picker, hapus dari grup, ubah nama, hapus grup). Link "Grup Koleksi" ditambahkan di header halaman Koleksiku.
-- Semua UI grouping lama di `Collection/Index.tsx` (popover inline, filter dropdown, kolom tabel "Grup") dicopot bersih.
-- **Bug ketemu & diperbaiki saat verifikasi HTTP langsung**: pivot table `collection_group_items` sempat dikasih `uuid('id')->primary()` kayak tabel lain di app ini — tapi `attach()`/`syncWithoutDetaching()` Eloquent insert baris pivot lewat query builder mentah (bukan lewat model event), jadi `HasUuids` nggak sempat ngisi kolom `id`, bikin `NOT NULL constraint violation` di SQLite. Fix: pivot table murni pakai composite primary key (`collection_group_id`, `collection_id`), bukan `id` sintetis — pola standar Laravel buat pivot table tanpa data tambahan.
-
----
-
-## 2026-08-14 (lanjutan 7) — Fix: Link Login (CLI/Email) Override Akun Aktif Alih-Alih Nambah
-
-- **Bug ditemukan user**: login lewat link darurat CLI (`sso:emergency-login`) atau lewat magic link email, pas dibuka sementara sudah login sebagai akun lain, malah **meng-override** akun yang lagi aktif alih-alih menambahkannya sebagai akun ke-link (fitur multi-account switching, lanjutan 5). Root cause: keputusan link-atau-replace sebelumnya bergantung ke flag `sso_link_mode` yang cuma di-set kalau login dimulai dari modal "Tambah Akun" di UI — link CLI/email nggak pernah lewat modal itu sama sekali, jadi flag-nya nggak pernah ke-set.
-- **Fix**: `AccountLinkService::loginAs()` sekarang nentuin link-atau-replace dari status login **saat link dikonsumsi** (`auth()->check()`), bukan dari flag UI — kalau ada user lain yang lagi aktif pas link diklik, otomatis ditambahkan ke daftar akun ke-link, apa pun sumber link-nya (modal "Tambah Akun", CLI, atau email). Flag `sso_link_mode` dan parameter query `?link=1` yang jadi biang masalah dihapus total (dead code setelah fix ini).
-- Diverifikasi lewat HTTP langsung: login sebagai A → konsumsi magic link bare buat B (simulasi CLI/email, tanpa modal "Tambah Akun") → identitas aktif jadi B, **A tetap muncul di daftar akun ke-link** (sebelumnya A akan hilang total). Kasus guest fresh-login (belum ada sesi sebelumnya) tetap bersih, nggak ada akun phantom nyangkut.
+- New feature at the user's request: users can export their entire collection (+ reading progress, reviews, ratings) to a JSON file and import it back. "Export"/"Import" buttons in the `Collection/Index.tsx` header.
+- **Export** (`CollectionController::export()`) — `response()->streamDownload()` (same pattern as `DatabaseBackupController`), filename `malas-koleksi-{username}-{date}.json`. Each entry contains: series identifiers (`anilist_id`, `ranobedb_id`, `mal_id`, `slug` — all sent together so matching on import stays robust even if one changes or is empty), condition, acquired_at, notes, personal_rating, personal_review, and the full volume list (number, format, ebook_source, language, read_at).
+- **Import** (`CollectionController::import()`) — uploads a JSON file, validates the structure (`version` + `collections` array) before touching anything, wrapped in `DB::beginTransaction()`. Series matching goes in order: `anilist_id` → `ranobedb_id` → `mal_id` → `slug`, looked up in the **local** catalog (not auto-fetching from AniList — a deliberate decision, to avoid duplicating the logic of `AniListController::import()`; if a series isn't in the local catalog yet, that entry is skipped and counted separately). Series already in the user's collection are also skipped (**append-only**, as the user confirmed — not overwrite). All volume fields (`format`/`ebook_source`/`language`) and `condition` are whitelisted through `sanitizeEnum()` before insert — the user's uploaded file is not trusted as-is. The result is reported through flash: "X imported, Y skipped (already owned or not in the catalog)".
+- Verified end-to-end through direct HTTP requests (curl, not browser — the browser pane tool had problems this session): export of user A with 2 collections (including rating/review/2 volumes) → complete and accurate JSON; import into user B who already had 1 of those 2 series → only 1 new series was imported, the existing one wasn't duplicated/overwritten; an entry whose series isn't in the local catalog → skipped gracefully, no crash; an invalid/corrupt JSON file → rejected with an error message, not a 500.
 
 ---
 
-## 2026-08-14 (lanjutan 6) — Stepper dari Koleksiku, Grouping Koleksi, Flash Message Multi-Bahasa
+## 2026-08-15 (part 4) — Temporarily Disable AI Funfact Generation
 
-- Stepper +/- progres baca sekarang juga bisa dipakai langsung dari halaman **Koleksiku** (`/my-collection`), nggak perlu buka detail koleksi dulu — reuse endpoint yang sama persis dengan halaman detail (Phase 23), cuma tambahan UI di grid card & table row.
-- Fitur **grouping koleksi** baru — user bisa kasih label bebas ke koleksinya (mis. "Rak Kamar", "Rak Kantor") lewat popover inline, plus filter dropdown "Semua Grup"/"Tanpa Grup"/nama grup. Kolom `collections.group_name` (string bebas, bukan tabel terpisah). **⚠️ Desain ini diganti total di lanjutan 8** — ternyata salah semantik, lihat entri di bawah.
-- **Flash message controller akhirnya multi-bahasa** — backlog lama yang sudah lama tercatat di CLAUDE.md. `lang/{id,en,ja}/flash.php` baru, ~70 pemanggilan `->with('success'/'error'/'info', ...)` di 24 controller dikonversi dari hardcode Bahasa Indonesia jadi `__('flash.xxx', [...])`. Diverifikasi langsung lewat HTTP: request yang sama dengan `users.locale` beda-beda menghasilkan pesan flash yang benar di ketiga bahasa.
-- **Bug ketemu & diperbaiki saat sweep flash-message**: `VolumeController::generate()` pakai key dinamis (`->with($created > 0 ? 'success' : 'info', $message)`) yang lolos dari grep pencarian literal `with('success'` — ketemu lewat sweep kedua yang nyari sisa kata "berhasil"/"gagal" di luar pemanggilan `__()`.
+- At the user's request, the AI funfact generation feature (auto-generate + "Regenerate" button + funfact text) was temporarily disabled through the constant `DashboardController::FUNFACT_GENERATION_ENABLED = false`. The genre word cloud (the non-AI part of the same "Genre Taste" card) **still** displays normally — only the AI part is skipped. `regenerateFunfact()` also got a defensive 404 guard in case a stray request hits that endpoint while it's disabled. No code/data was deleted — just flip the constant back to `true` to re-enable.
 
 ---
 
-## 2026-08-14 (lanjutan 5) — Multi-Account Switching (Session-Based)
+## 2026-08-15 (part 3) — Modal Layout Fix, Collection URLs Use Titles, Confirm+Undo for Removing from Group, Puter.js Removed
 
-- User (bukan cuma admin) sekarang bisa nyambungin akun lain ("Tambah Akun") dan switch cepat antar akun tanpa login ulang, selama masih di browser yang sama — dipicu dari kasus admin yang nggak bisa akses `/my-collection` pakai akun admin-nya sendiri.
-- Sengaja **session-based, tanpa link permanen di DB** — daftar akun ke-link (`linked_account_ids`) cuma hidup di session. Ganti browser/device, harus link ulang dari nol. Alasannya: link permanen cuma soal convenience, bukan keamanan — switch akun tetap selalu wajib bukti login beneran ke akun target lebih dulu.
-- Dibuka buat **semua user**, bukan dibatasi admin — nggak ada gap keamanan buat dibuka luas karena validasinya di session, bukan di role.
-- `AccountSwitcher.tsx` baru (Popover di avatar sidebar footer, Admin & User Layout) — lihat profil, quick-switch akun, "Tambah Akun" (reuse `LoginMethodDialog`), dan dua opsi logout: "Keluar dari Akun Ini" (pola X/Twitter — auto-switch ke akun ke-link lain kalau ada) vs "Keluar dari Semua Akun".
-- `AccountLinkService`, `Auth\AccountController` (`switch`/`logoutCurrent`) baru di backend — validasi ketat: target switch wajib sudah ada di whitelist session, nggak bisa switch ke akun sembarangan.
-
----
-
-## 2026-08-14 (lanjutan 4) — Quick-Edit Progres Baca & Jumlah Volume di Koleksiku
-
-- Stepper +/- "progres baca" baru di halaman detail koleksi — geser batas volume terbaca satu langkah tanpa harus cari & klik ikon mata volume tertentu. `+` menandai volume-belum-dibaca bernomor terendah jadi sudah dibaca, `-` membalik volume-sudah-dibaca bernomor tertinggi jadi belum dibaca. Ikon mata per-volume tetap ada buat koreksi manual di luar urutan.
-- Stepper +/- "jumlah dimiliki" per format (fisik/ebook/online/webtoon) — nambah/hapus volume cepat tanpa buka dialog "Tambah Volume". `+` ambil nomor volume berikutnya yang belum dimiliki sama sekali (nomor dibagi bersama lintas format dalam satu koleksi), `-` hapus volume bernomor tertinggi dari format itu. Stepper cuma muncul buat format yang sudah punya minimal 1 volume.
-- Volume yang lagi dipinjamkan dilindungi dari penghapusan lewat stepper — tombol `-` didisable + tooltip kalau volume tertinggi format itu lagi dipinjam.
-- **Bug ketemu & diperbaiki saat verifikasi HTTP langsung**: implementasi awal query di server diam-diam jatuh ke volume non-loaned berikutnya kalau top volume lagi dipinjam, alih-alih menolak aksinya — kontradiksi sama desain "disable + tooltip, jangan diam-diam ganti target". Fix: query cuma pernah incar top volume asli, tolak (info toast) kalau itu lagi dipinjam.
+- **Fix for the "Add Manga" modal layout**: the type filter was covered and the modal scrolled along with it — the root cause was that the item list div (`min-h-[360px] flex-1 overflow-y-auto`) had a 360px height floor that could be larger than the space flexbox allocated (`max-h-[85vh]` minus the header/search/filter/footer heights), so once the item grid got long enough, the whole `DialogContent` was forced taller than `max-h-[85vh]` instead of only that div scrolling — pushing the filter out of the viewport. Fix: `min-h-[360px]` → `min-h-0` (so the flex item can shrink fully to the remaining space), plus an explicit `shrink-0` on the header/search/filter/footer so they don't get compressed.
+- **The `/my-collection` URL uses the series title, not a UUID** — user request "my collection URL still uses a random string, not the collection's title". New `Collection::resolveRouteBinding()`: matches through the Series slug (`whereHas('series', fn ($q) => $q->where('slug', $value))`), **restricted to collections owned by the logged-in user** (two users can both own a collection of the same series, so one `Series::slug` is "used" by many `Collection`s) — falling back to id if not found. No new `slug` column was added to the `collections` table at all, just reusing `series.slug`, which is already globally unique. Six frontend files + controllers that generate `collection.show` links were updated: `SearchController`/`GlobalSearch.tsx`, `Catalog/Show.tsx` (reuses the `series.slug` already in props, no extra query needed), `CollectionController::index()`/`Collection/Index.tsx`, `CollectionGroupController::show()`/`CollectionGroups/Show.tsx`, `DashboardController::continueReading()`/`Dashboard.tsx`, `LoanController::index()`/`Loans/Index.tsx`. Action endpoints (PATCH/POST/DELETE behind `/my-collection/{collection}/...`, not GET navigation) deliberately **still** use the raw `collection.id` — those aren't URLs the user reads or bookmarks.
+- **Confirmation + Undo for removing a manga from a group** — previously the X button in `CollectionGroups/Show.tsx` called `router.delete()` straight away with no confirmation, and the success toast had no Undo button (even though the mandatory CLAUDE.md rule says all reversible actions must have Undo). Added a confirmation dialog (same pattern as the Delete Group dialog in the same file) before actually deleting, and `CollectionGroupController::removeItem()` now sends `undo_url`/`undo_payload` — a new PATCH route `collection.groups.items.undoRemove` → `undoRemoveItem()` that re-attaches the pivot (not a hard delete, so the undo is simple and doesn't need complicated payload reconstruction like `CollectionController::undoDestroy()`).
+- **Puter.js removed entirely** — direct user request "let's remove the puter integration". Removed: `resources/js/lib/puter.ts` (file deleted), the `<script src="https://js.puter.com/v2/">` tag in `app.blade.php`, the "Puter" option from the AI provider dropdown (`Admin/Settings/Index.tsx`) plus the `Rule::in()` validation in `AiSettingController`, and the `provider === 'puter'` check in `AiFunfactService`. New default provider: `gemini` (replacing `puter`, but it still needs an API key — if empty it automatically falls back to `AiFunfactService::fallbackText()`, a static text from genre data, not AI). Endpoints used only for Puter's client-side generate flow — `dashboard.funfact.auto-save` and `dashboard.funfact.report-error` (plus their controller methods, `saveAutoGeneratedFunfact()`/`reportFunfactError()`) — became completely dead code once Puter was removed, and were deleted too. A new migration normalizes old `ai_settings.provider = 'puter'` rows (if any) to `'gemini'`.
+- All verified through the Browser tool: the filter modal looked full + only the item grid scrolled (not the whole dialog), clicking a collection/group card navigated to `/my-collection/{series-title}`, clicking remove from group showed a confirmation dialog first, the toast after removal had an Undo button that actually restored the item, the admin AI provider tab only showed Gemini/OpenAI/Claude (Puter is gone), and the funfact "Regenerate" button still works normally (fails gracefully through the regular server path, not a crash referencing Puter).
 
 ---
 
-## 2026-08-14 (lanjutan 3) — Filter Genre Multi-Select di Katalog User
+## 2026-08-15 (part 2) — Wider "Add Manga" Modal + Infinite Scroll
 
-- Filter genre di halaman Katalog diganti dari dropdown single-select jadi combobox yang bisa diketik (fuzzy search) dan pilih lebih dari satu genre — `GenreMultiSelect.tsx` baru (Popover + `Command`/cmdk), genre terpilih tampil sebagai badge yang bisa dihapus satu-satu.
-- Filter genre sekarang **OR-match**: series lolos kalau punya salah satu genre yang dipilih, bukan wajib semuanya. Diverifikasi: Comedy sendiri 59 hasil, Romance sendiri 43 hasil, gabungan keduanya 67 hasil (union yang benar).
-- Item ini adalah miss dari sesi sebelumnya — diminta eksplisit tapi sempat ke-skip; ketemu lagi lewat audit "cek fitur kelewat" (lihat entri di bawah).
-
----
-
-## 2026-08-14 (lanjutan 2) — Favicon Terpasang, README Dirombak (Bilingual), Audit Fitur Kelewat
-
-- Favicon yang sudah digenerate sebelumnya (`public/images/favicon/`) akhirnya di-wire ke `resources/views/app.blade.php` — sebelumnya nol favicon sama sekali. SVG dengan varian light/dark (`prefers-color-scheme`), PNG fallback, `apple-touch-icon`, dan `site.webmanifest` baru buat PWA/home-screen icon.
-- README dirombak total jadi bilingual (🇮🇩 Indonesia / 🇬🇧 English) dengan language-switcher, logo, badge tech stack, dan section baru "Belum Selesai (Backlog)" yang transparan soal gap fitur.
-- Audit fitur yang diminta tapi kelewat: grep `TODO`/`FIXME` di kode (nihil), cross-check `CLAUDE.md`/`PHASES.md`/`prd.md`. Ketemu satu miss nyata — filter genre multi-select di Katalog (diminta sesi sebelumnya, belum dikerjakan) — langsung dibangun, lihat entri di atas.
+- **The modal was actually widened**: the user request "make the add manga to group modal wider" uncovered another bug — the `max-w-7xl` set in Phase 28 was never in effect! `ui/dialog.tsx` has a built-in base style `sm:max-w-sm`, and a custom class WITHOUT the `sm:` prefix (like a bare `max-w-7xl`) loses in the Tailwind cascade once the viewport is ≥640px — the dialog had silently stayed at 384px all along. Fix: `sm:max-w-7xl` (not just `max-w-7xl`). Verified directly through `getComputedStyle` in the Browser tool — before the fix `computedMaxWidth: "384px"`, after the fix `"1280px"`.
+- **Infinite scroll replaces `<Pagination>`**: explicit user request "infinite scrolling, not paginate". The "collections that can be added" list now accumulates each page's results into local state (`accumulated`), and fetches the next page automatically when scrolled near the bottom — not by clicking page numbers manually.
+  - The first attempt used `IntersectionObserver` and **failed to be detected** during verification in the Browser tool — root cause: the `useEffect` that created the observer ran BEFORE the sentinel DOM was mounted (Base UI's Dialog content mounts one tick after `addOpen` becomes `true`), and the effect's dependency array never retriggered once the ref was attached. The second attempt moved to the ref-callback pattern (the observer is created when the sentinel node actually mounts) — but the observer still never fired at all in this Browser tool environment (even `observe(document.body)` never got a callback), probably because the tab wasn't compositing active frames (see the "Browser pane is not displayed" error when trying a screenshot).
+  - **Final solution**: switched entirely to a regular `onScroll` handler (checking `scrollHeight - scrollTop - clientHeight < 300`) — it doesn't depend on the rendering/compositing pipeline, is easier to verify (can be triggered manually through `dispatchEvent(new Event('scroll'))`), and actually works: verified 50 dummy items loading 24 → 48 → 50 over two scrolls, each sending exactly one request (`page=2` then `page=3`), with no duplicate/excess requests after all pages ran out.
+- **A similar bug likely exists elsewhere**: `Admin/Series/Edit.tsx` (`max-w-3xl`) and `User/Collection/Index.tsx` (`max-w-4xl`) also use the `max-w-*` pattern without the `sm:` prefix — not verified/fixed in this session (out of scope, flagged as a separate task). `Admin/ActivityLog/Index.tsx` was already correct from the start (`sm:max-w-2xl`).
+- The "React Components" section of `CLAUDE.md` got an explicit rule about the mandatory `sm:` prefix for overriding `DialogContent` width, so this doesn't happen again.
 
 ---
 
-## 2026-08-14 (lanjutan) — Fix URL Admin (Slug) & Editor Genre/Tags di Series Edit
+## 2026-08-15 — Fix: Blank Screen Opening a Collection Group (Empty Slug + Guest Crash), Emoji-Free README
 
-- **Fix URL admin masih UUID**: rollout slug di Phase 15 cuma nyentuh sisi user (`catalog.show`) — semua `route('admin.series.show'/'edit', ...)` di 9 halaman admin (Index, Show, EditVolume, Edit, AniList, RanobeDb, Search, Tickets, Command Palette) masih pakai UUID mentah. Backend diupdate kirim `slug`/`series_slug`, semua route call di frontend diganti pakai slug (UUID tetap dipakai di tempat yang butuh — bulk-select, target API delete/update).
-- **Editor genre/tags di Series Edit**: halaman ini sebelumnya sama sekali nggak punya UI buat genre/authors/illustrators/themes/demographics — `TagListInput.tsx` baru (editor tag bebas, Enter/koma nambah, klik-X hapus), 5 field baru di form. Popover "Sync AniList/RanobeDB" sekarang ikut ngisi tag (sebelumnya cuma judul/sinopsis/dll, walau data genre-nya sudah di-fetch dari API).
-- **Bug ketemu & diperbaiki saat verifikasi HTTP langsung**: middleware global Laravel 12 `ConvertEmptyStringsToNull` ngubah sentinel string-kosong (dipakai buat sinyal "hapus semua tag") jadi `null` sebelum validasi jalan — rule `genres.*` yang nggak punya `nullable` nolak `null` dengan 422. Artinya fitur "hapus semua tag" gagal total kalau sungguhan dicoba. Fix: tambah `nullable` ke rule tag, filter sentinel di controller diubah buang `null` juga.
-
----
-
-## 2026-08-14 — Tema Light/Dark/System
-
-- Toggle dark/light satu-klik di sidebar footer (Admin/User Layout) dan Landing page diganti jadi 3 opsi eksplisit (Light/Dark/System) — pola sama persis dengan `LanguageSwitcher` yang sudah ada: `ThemeSwitcher.tsx` (Popover), sync ke DB per-user (`users.theme`, `PATCH /settings/theme`), guest-safe (localStorage-only kalau belum login).
-- `useTheme()` ditulis ulang — resolve `system` lewat `matchMedia`, live-update kalau preferensi OS berubah selagi app terbuka.
-- Kartu "Tema" baru di halaman Settings, antara kartu "Bahasa" dan "Profil Publik".
+- **Bug #1 (the real root cause)**: the user had a collection group ("RomCom") created BEFORE the slug migration (Phase 28) — the `slug` column was added as `nullable()` so the migration wouldn't fail on old data, but nobody backfilled it. That group stayed saved with `slug = NULL` forever. Once the frontend (`Index.tsx`/`Show.tsx`) started generating all links using `group.slug`, the link to this group broke (`route('collection.groups.show', null)`), navigation failed → **blank screen**. This was the main cause of the user's report, not just about guests.
+  - Fix: new migration `2026_08_15_090000_backfill_collection_groups_slug.php` — backfills every `collection_groups.slug` that is still NULL using `CollectionGroup::generateUniqueSlug()`, identical to the Series slug backfill (`2026_08_02_090000_add_slug_to_series_table.php`). Verified directly: the "RomCom" group got the slug `sehnauoi-romcom`, and both the Index and Show pages rendered normally after the backfill (checked using the Browser tool directly, not curl — the `href` link in Index now really points to the correct slug, and clicking through to the detail page succeeded with no JS error).
+- **Bug #2**: `CollectionGroups/Show.tsx` always rendered through `UserLayout`, which assumes a logged-in user (`AccountSwitcher.tsx` accesses `auth.user!` — a non-null assertion). For a guest (not logged in) opening a **public** group, `auth.user` is `null` via `HandleInertiaRequests`, so React crashed when trying to render the sidebar/account switcher → also a blank screen, but a separate case from Bug #1 (it only affects guests, while Bug #1 affects anyone, including the logged-in owner).
+  - Fix: add the `is_guest` prop from `CollectionGroupController::show()` (`$viewer === null`), then in `Show.tsx` use `Layout = is_guest ? PublicShell : UserLayout` — exactly the same pattern as `Profile/Show.tsx`. The breadcrumb to `/collection-groups` (an auth-only route) is also hidden for guests. The public/private status badge in the header now reads the real `group.is_public`, instead of always showing "Public" to non-owners (which hit the case of an admin viewing someone else's private group).
+- Neither bug was caught by the Phase 27/28 verification because that verification only checked the Inertia JSON response through curl (server props correct), not an actual React render in a browser — so the NULL slug on old data & the client-side crash slipped through.
+- **README.md & README.id.md overhauled** — all emoji removed (section badges, section headers, feature lists, troubleshooting/backlog bullets, "back to top" buttons) at the user's request ("don't use excessive emoji, better to have none at all"). Internal anchor links (`#troubleshooting`, etc.) were adjusted because GitHub generates different heading slugs once emoji are removed.
 
 ---
 
-## 2026-08-03 (lanjutan 3) — Fix: Tombol Login di Halaman Profil Publik
+## 2026-08-14 (part 9) — Collection Groups: Bigger Modal + Pagination, Type Filter, Slug URLs, Public/Private
 
-- Tombol Login di header `PublicShell` dan CTA "Login untuk follow" (keduanya di `Profile/Show.tsx`, dilihat guest yang buka profil publik) masih redirect langsung ke SSO — ketinggalan dari rollout modal login karena rollout awal cuma nyentuh Landing page.
-- Diperbaiki: kedua tempat sekarang buka `LoginMethodDialog` juga, masing-masing dengan state lokal sendiri (`loginOpen` di `PublicShell`, `followLoginOpen` di komponen utama).
-- Grep ulang `sso.redirect` di seluruh `resources/js` mastiin tidak ada tombol Login lain yang ketinggalan.
-
----
-
-## 2026-08-03 (lanjutan 2) — Modal Pilihan Login (SSO / Email)
-
-- Landing page sekarang munculin modal pilihan cara login begitu tombol "Login" diklik — "Login dengan Yado" atau "Login dengan Email" (`LoginMethodDialog.tsx`), bukan langsung redirect ke SSO.
-- Login lewat Email dipromosikan dari link kecil "SSO nggak bisa diakses?" (fallback darurat tersembunyi) jadi opsi setara SSO di modal — mekanisme backend-nya sama persis (magic link sekali-pakai, `SsoFallbackController`), cuma framing UI-nya berubah.
-- Rate limit endpoint `POST /auth/fallback` dinaikkan dari `throttle:3,15` ke `throttle:5,10` — sekarang dipakai sebagai opsi harian, bukan cuma darurat, jadi limitnya perlu lebih longgar.
-- **Catatan penting**: profil (nama/avatar/username) cuma ikut ke-sync ulang dari Yado pas login lewat SSO. User yang seterusnya login lewat email nggak dapat update profil otomatis — ini keputusan sadar, bukan bug (didiskusikan & disetujui sebelum implementasi).
+- **The "Add Manga" modal was enlarged & paginated** — `max-w-3xl` → `max-w-5xl`, and the list of collections that can be added is now paginated server-side (24/page, the same `Pagination.tsx` used on other list pages) so users can browse their entire collection, not just a short list loaded once and filtered on the client.
+- **Type filter** (Manga/Light Novel/One Shot/Doujinshi/Manhwa/Manhua, segmented control) was added to this modal, reusing `useTypeFilterOptions()` — the same pattern as the type filter on other list pages (see the mandatory rule in CLAUDE.md).
+- Search & type filter in the modal are now **server-side** (debounced `router.get` partial reload `only: ['available']`), instead of client-side filtering over a fully loaded array — manga already in the group are automatically excluded (`whereNotIn`) at the query level, not only in the UI.
+- **Group URLs use a slug, not a UUID** — format `{username}-{group-name-slug}` (e.g. `/collection-groups/testowner-romcom`), generated in `CollectionGroup::generateUniqueSlug()` (same pattern as `Series::generateUniqueSlug()`), regenerated automatically when the group name changes. Falls back to id if the username hasn't been synced from SSO yet.
+- **Public/Private option per group** — a `Switch` on the group detail page (owner-only). Public groups appear in a new "Public Collection Groups" section on the user's public profile (`ProfileController::publicGroups()`) and can be accessed by anyone (including guests) through the direct URL; private groups can only be seen by their owner (and admins). The route `GET /collection-groups/{group}` was moved out of the `auth` middleware group (same pattern as the public profile `/u/{user}`) — visibility is checked manually in the controller (`abort_unless($group->is_public || $isOwner || ...)`), not through middleware.
+- `PublicShell` (a minimal shell for public pages without login — header + login button) was extracted from `Profile/Show.tsx` into the shared component `Components/app/PublicShell.tsx`, also used in `CollectionGroups/Show.tsx` so guests opening a public group don't run into `UserLayout`, which needs a login session.
+- New migration: `collection_groups.slug` (unique) + `collection_groups.is_public` (default false).
+- **Bug found & fixed during direct HTTP verification**: the `available` query that `join()`s to the `series` table (to sort by title & filter by type) made `whereNotIn('id', ...)` ambiguous — SQLite doesn't know whether `id` belongs to the `collections` or `series` table, error `ambiguous column name: id`. Fix: qualify it as `whereNotIn('collections.id', ...)`.
+- Full live HTTP test: 30 dummy collections → type filter (manga vs novel) correct, substring search correct, page 2 pagination correct, adding 2 items → immediately excluded from `available` (total 30→28), public toggle → a guest without login can see the group (`is_owner: false`, `available: null`), private toggle again → the guest gets 403, group rename → slug regenerated automatically, the owner's public profile shows the public group with a cover collage. Test data (users, collections, series, groups, tokens) was cleaned from the dev database after verification.
 
 ---
 
-## 2026-08-03 (lanjutan) — Batch Import AniList, Fix Logout SSO Down, Context Menu Tab Baru
+## 2026-08-14 (part 8) — Collection Groups Fully Reworked (MDList MangaDex Style)
 
-### Batch Import AniList (genre, tahun, popularitas)
+- **The grouping design from part 6 turned out to have the wrong semantics** — the user explained they meant "MDList MangaDex style": a group is the first-class object (given a name, e.g. "RomCom"), filled with many manga from the user's collection — not just a single string label per collection. Replaced entirely, not patched.
+- New `CollectionGroup` model + pivot `collection_group_items` — **many-to-many**, one manga can be in more than one group at once. The `collections.group_name` column (old design) was removed.
+- New pages: `/collection-groups` (group list, cover collage from the first 4 manga) → `/collection-groups/{group}` (group contents — add manga from the collection through a picker dialog, remove from the group, rename, delete the group). A "Collection Groups" link was added to the My Collection page header.
+- All the old grouping UI in `Collection/Index.tsx` (inline popover, filter dropdown, "Group" table column) was cleanly removed.
+- **Bug found & fixed during direct HTTP verification**: the pivot table `collection_group_items` was initially given `uuid('id')->primary()` like other tables in this app — but Eloquent's `attach()`/`syncWithoutDetaching()` inserts pivot rows through the raw query builder (not model events), so `HasUuids` never got the chance to fill the `id` column, causing a `NOT NULL constraint violation` in SQLite. Fix: the pivot table uses purely a composite primary key (`collection_group_id`, `collection_id`) instead of a synthetic `id` — the standard Laravel pattern for pivot tables without extra data.
 
-- Filter genre (dropdown enum kanonis AniList), tahun rilis, dan toggle "Urutkan Popularitas" ditambahkan ke halaman `Admin/AniList/Index.tsx` — boleh browse cuma dari filter tanpa ketik judul apa pun.
-- Checkbox multi-select per hasil (cuma yang belum ada di katalog) + "Pilih Semua" + import sekaligus. `AniListService::getMangaBatch()` ambil sampai 50 series dalam **satu** request GraphQL (`media(id_in: [...])`), bukan N request terpisah per series — penting buat hemat kuota rate-limit AniList (~90 req/menit).
-- Toggle "Sembunyikan yang sudah ada di katalog" — filter client-side, dikombinasikan dengan badge "Sudah diimpor" yang sudah ada sebelumnya.
-- **Ketemu saat riset (diverifikasi langsung ke API sebelum coding)**: `seasonYear` di skema AniList adalah konsep musim tayang anime, selalu balikin array kosong untuk `type: MANGA`. Filter tahun untuk manga yang benar pakai rentang `startDate_greater`/`startDate_lesser` (`FuzzyDateInt`, format `YYYYMMDD`).
+---
+
+## 2026-08-14 (part 7) — Fix: Login Links (CLI/Email) Override the Active Account Instead of Adding
+
+- **Bug found by the user**: logging in through the CLI emergency link (`sso:emergency-login`) or an email magic link, when opened while already logged in as another account, **overrides** the currently active account instead of adding it as a linked account (the multi-account switching feature, part 5). Root cause: the link-or-replace decision previously depended on the `sso_link_mode` flag, which is only set when login starts from the "Add Account" modal in the UI — CLI/email links never go through that modal at all, so the flag was never set.
+- **Fix**: `AccountLinkService::loginAs()` now decides link-or-replace from the login state **at the moment the link is consumed** (`auth()->check()`), not from a UI flag — if another user is active when the link is clicked, it is automatically added to the linked accounts list, whatever the link's source (the "Add Account" modal, CLI, or email). The `sso_link_mode` flag and the `?link=1` query parameter that caused the problem were removed entirely (dead code after this fix).
+- Verified through direct HTTP: log in as A → consume a bare magic link for B (simulating CLI/email, without the "Add Account" modal) → the active identity became B, **A still appears in the linked accounts list** (previously A would have disappeared entirely). The fresh guest login case (no previous session) stays clean, with no phantom accounts left behind.
+
+---
+
+## 2026-08-14 (part 6) — Stepper from My Collection, Collection Grouping, Multilingual Flash Messages
+
+- The reading progress +/- stepper can now also be used directly from the **My Collection** page (`/my-collection`), without opening the collection detail first — it reuses exactly the same endpoint as the detail page (Phase 23), just extra UI on the grid card & table row.
+- New **collection grouping** feature — users can give their collections a free-form label (e.g. "Bedroom Shelf", "Office Shelf") through an inline popover, plus a filter dropdown "All Groups"/"No Group"/group name. The `collections.group_name` column (a free string, not a separate table). **⚠️ This design was replaced entirely in part 8** — it turned out to have the wrong semantics, see the entry above.
+- **Controller flash messages are finally multilingual** — an old backlog item long noted in CLAUDE.md. New `lang/{id,en,ja}/flash.php`, ~70 `->with('success'/'error'/'info', ...)` calls across 24 controllers converted from hardcoded Indonesian to `__('flash.xxx', [...])`. Verified directly through HTTP: the same request with different `users.locale` values produced the correct flash message in all three languages.
+- **Bug found & fixed during the flash-message sweep**: `VolumeController::generate()` used a dynamic key (`->with($created > 0 ? 'success' : 'info', $message)`) that slipped past the literal grep search for `with('success'` — found through a second sweep that searched for leftover words "berhasil"/"gagal" outside `__()` calls.
+
+---
+
+## 2026-08-14 (part 5) — Multi-Account Switching (Session-Based)
+
+- Users (not just admins) can now link other accounts ("Add Account") and switch quickly between accounts without logging in again, as long as they stay in the same browser — triggered by the case of an admin who couldn't access `/my-collection` with their own admin account.
+- Deliberately **session-based, with no permanent links in the DB** — the list of linked accounts (`linked_account_ids`) lives only in the session. Switch browsers/devices and you must link again from scratch. The reason: a permanent link is only about convenience, not security — switching accounts always requires real proof of login to the target account first.
+- Open to **all users**, not restricted to admins — there is no security gap in opening it widely because the validation is in the session, not in the role.
+- New `AccountSwitcher.tsx` (a Popover on the sidebar footer avatar, Admin & User Layout) — view profile, quick-switch accounts, "Add Account" (reuses `LoginMethodDialog`), and two logout options: "Sign Out of This Account" (X/Twitter pattern — auto-switches to another linked account if there is one) vs "Sign Out of All Accounts".
+- New `AccountLinkService` and `Auth\AccountController` (`switch`/`logoutCurrent`) in the backend — strict validation: the switch target must already be in the session whitelist, so you can't switch to an arbitrary account.
+
+---
+
+## 2026-08-14 (part 4) — Quick-Edit Reading Progress & Volume Count in My Collection
+
+- New "reading progress" +/- stepper on the collection detail page — moves the read-volume boundary one step without having to find and click a specific volume's eye icon. `+` marks the lowest-numbered unread volume as read, `-` flips the highest-numbered read volume back to unread. The per-volume eye icon is still there for manual corrections out of order.
+- "Owned count" +/- stepper per format (physical/ebook/online/webtoon) — quickly add/remove volumes without opening the "Add Volume" dialog. `+` takes the next volume number not owned at all (numbers are shared across formats within one collection), `-` deletes the highest-numbered volume of that format. The stepper only appears for formats that already have at least 1 volume.
+- A volume that is currently on loan is protected from deletion via the stepper — the `-` button is disabled + has a tooltip if that format's highest volume is on loan.
+- **Bug found & fixed during direct HTTP verification**: the initial server query implementation silently fell through to the next non-loaned volume if the top volume was on loan, instead of rejecting the action — contradicting the "disable + tooltip, don't silently change the target" design. Fix: the query only ever targets the true top volume, and rejects (info toast) if it's on loan.
+
+---
+
+## 2026-08-14 (part 3) — Multi-Select Genre Filter in the User Catalog
+
+- The genre filter on the Catalog page changed from a single-select dropdown to a typeable combobox (fuzzy search) where more than one genre can be picked — new `GenreMultiSelect.tsx` (Popover + `Command`/cmdk), with selected genres shown as badges that can be removed one by one.
+- The genre filter is now **OR-match**: a series passes if it has any of the selected genres, not all of them. Verified: Comedy alone 59 results, Romance alone 43 results, both combined 67 results (the correct union).
+- This item was a miss from a previous session — explicitly requested but skipped; found again through the "check for missed features" audit (see the entry below).
+
+---
+
+## 2026-08-14 (part 2) — Favicon Installed, README Overhauled (Bilingual), Missed-Feature Audit
+
+- The previously generated favicon (`public/images/favicon/`) was finally wired into `resources/views/app.blade.php` — before, there was no favicon at all. SVG with light/dark variants (`prefers-color-scheme`), PNG fallback, `apple-touch-icon`, and a new `site.webmanifest` for the PWA/home-screen icon.
+- README completely overhauled into bilingual (🇮🇩 Indonesian / 🇬🇧 English) with a language switcher, logo, tech stack badges, and a new "Unfinished (Backlog)" section that is transparent about feature gaps.
+- Audit of features that were requested but missed: grep for `TODO`/`FIXME` in code (none), cross-check `CLAUDE.md`/`PHASES.md`/`prd.md`. Found one real miss — the multi-select genre filter in the Catalog (requested in a previous session, not yet done) — built right away, see the entry above.
+
+---
+
+## 2026-08-14 (part 1) — Fix Admin URLs (Slug) & Genre/Tags Editor in Series Edit
+
+- **Fix admin URLs still using UUIDs**: the slug rollout in Phase 15 only touched the user side (`catalog.show`) — all `route('admin.series.show'/'edit', ...)` calls on 9 admin pages (Index, Show, EditVolume, Edit, AniList, RanobeDb, Search, Tickets, Command Palette) still used the raw UUID. The backend was updated to send `slug`/`series_slug`, and all frontend route calls were switched to slugs (the UUID is still used where needed — bulk-select, delete/update API targets).
+- **Genre/tags editor in Series Edit**: this page previously had no UI at all for genre/authors/illustrators/themes/demographics — new `TagListInput.tsx` (free tag editor, Enter/comma adds, click X removes), 5 new fields in the form. The "Sync AniList/RanobeDB" popover now also fills in tags (before, it only filled title/synopsis/etc., even though the genre data was already fetched from the API).
+- **Bug found & fixed during direct HTTP verification**: Laravel 12's global middleware `ConvertEmptyStringsToNull` turned the empty-string sentinel (used as the signal for "delete all tags") into `null` before validation ran — the `genres.*` rule, which had no `nullable`, rejected `null` with 422. This meant the "delete all tags" feature failed completely if actually tried. Fix: add `nullable` to the tag rules, and change the sentinel filter in the controller to drop `null` as well.
+
+---
+
+## 2026-08-14 — Light/Dark/System Theme
+
+- The one-click dark/light toggle in the sidebar footer (Admin/User Layout) and the Landing page was replaced with 3 explicit options (Light/Dark/System) — exactly the same pattern as the existing `LanguageSwitcher`: `ThemeSwitcher.tsx` (Popover), synced to the DB per user (`users.theme`, `PATCH /settings/theme`), guest-safe (localStorage-only when not logged in).
+- `useTheme()` was rewritten — resolves `system` through `matchMedia`, live-updating if the OS preference changes while the app is open.
+- A new "Theme" card on the Settings page, between the "Language" card and the "Public Profile" card.
+
+---
+
+## 2026-08-03 (part 3) — Fix: Login Button on the Public Profile Page
+
+- The Login button in the `PublicShell` header and the "Log in to follow" CTA (both in `Profile/Show.tsx`, seen by guests opening a public profile) still redirected straight to SSO — missed in the login modal rollout because the initial rollout only touched the Landing page.
+- Fixed: both places now open `LoginMethodDialog` too, each with its own local state (`loginOpen` in `PublicShell`, `followLoginOpen` in the main component).
+- Re-grepped `sso.redirect` across all of `resources/js` to make sure no other Login button was left behind.
+
+---
+
+## 2026-08-03 (part 2) — Login Method Modal (SSO / Email)
+
+- The Landing page now shows a login method modal as soon as the "Login" button is clicked — "Log in with Yado" or "Log in with Email" (`LoginMethodDialog.tsx`), instead of redirecting straight to SSO.
+- Email login was promoted from the small link "Can't reach SSO?" (a hidden emergency fallback) to an option on par with SSO in the modal — the backend mechanism is exactly the same (single-use magic link, `SsoFallbackController`), only the UI framing changed.
+- The rate limit of the `POST /auth/fallback` endpoint was raised from `throttle:3,15` to `throttle:5,10` — it is now used as a daily option, not just an emergency, so the limit needs to be looser.
+- **Important note**: the profile (name/avatar/username) is only re-synced from Yado when logging in through SSO. Users who log in by email from then on don't get automatic profile updates — this is a conscious decision, not a bug (discussed & approved before implementation).
+
+---
+
+## 2026-08-03 (part 1) — AniList Batch Import, SSO-Down Logout Fix, New-Tab Context Menu
+
+### AniList Batch Import (genre, year, popularity)
+
+- Genre filter (dropdown of canonical AniList enums), release year, and a "Sort by Popularity" toggle were added to the `Admin/AniList/Index.tsx` page — you can browse using only filters without typing any title.
+- Multi-select checkboxes per result (only those not yet in the catalog) + "Select All" + import all at once. `AniListService::getMangaBatch()` fetches up to 50 series in **one** GraphQL request (`media(id_in: [...])`), not N separate requests per series — important to save AniList's rate-limit quota (~90 req/minute).
+- A "Hide those already in the catalog" toggle — a client-side filter, combined with the existing "Already imported" badge.
+- **Found during research (verified directly against the API before coding)**: `seasonYear` in the AniList schema is the anime airing-season concept, and always returns an empty array for `type: MANGA`. The correct year filter for manga uses the range `startDate_greater`/`startDate_lesser` (`FuzzyDateInt`, format `YYYYMMDD`).
 
 ### Fixed
 
-- `SsoController::logout()` selalu memaksa browser navigasi ke domain SSO (`sso.yado.my.id/logout`) buat destroy sesi di sana juga — kalau SSO down, browser nge-hang lama nunggu koneksi ke domain yang mati, padahal sesi lokal sebenarnya sudah invalid duluan. Ditambah `ssoReachable()`, pengecekan cepat (timeout 3 detik) sebelum redirect — kalau tidak bisa dihubungi, langsung balik ke halaman utama tanpa nunggu. Diverifikasi lewat HTTP request langsung: logout sekarang selesai dalam ~3.4 detik yang dibatasi timeout, bukan berpotensi hang tanpa batas menunggu browser sendiri yang menyerah.
+- `SsoController::logout()` always forced the browser to navigate to the SSO domain (`sso.yado.my.id/logout`) to destroy the session there too — if SSO is down, the browser hangs for a long time waiting for a connection to the dead domain, even though the local session had actually already been invalidated. Added `ssoReachable()`, a quick check (3-second timeout) before redirecting — if it can't be reached, it goes straight back to the home page without waiting. Verified through a direct HTTP request: logout now completes in ~3.4 seconds bounded by the timeout, instead of potentially hanging indefinitely until the browser itself gives up.
 
 ### Added
 
-- Context menu (klik kanan) di `Admin/Series/Index.tsx` sekarang punya opsi "Buka di Tab Baru" (`window.open()`) di samping navigasi SPA biasa.
+- The context menu (right-click) in `Admin/Series/Index.tsx` now has an "Open in New Tab" option (`window.open()`) alongside regular SPA navigation.
 
 ---
 
-## 2026-08-03 — Login Tanpa SSO (Fallback), Konfigurasi Email (Resend), Landing Page Dirombak
+## 2026-08-03 — Login Without SSO (Fallback), Email Configuration (Resend), Landing Page Overhaul
 
-### Login Tanpa SSO (Fallback)
+### Login Without SSO (Fallback)
 
-Jalan darurat kalau Yado (SSO) benar-benar tidak bisa diakses (down/migrasi/maintenance) — bukan pengganti SSO, cuma buat kondisi darurat. Sengaja **tidak** pakai password lokal (tidak ada user yang punya password tersimpan, semua dikelola SSO) atau sistem approval admin (dibahas lalu disederhanakan) — dipilih magic link sekali-pakai lewat email yang sudah tersinkron dari SSO, verifikasi identitas lewat kepemilikan inbox.
+An emergency route if Yado (SSO) is truly unreachable (down/migration/maintenance) — not a replacement for SSO, only for emergencies. Deliberately **not** using a local password (no user has a stored password, everything is managed by SSO) or an admin approval system (discussed, then simplified) — a single-use magic link via email already synced from SSO was chosen, verifying identity through inbox ownership.
 
 #### Added
-- Link "SSO nggak bisa diakses?" di Landing page → `/auth/fallback` — form isi email → magic link sekali-pakai dikirim (kalau email terdaftar & mail service terkonfigurasi) → klik link → langsung login.
-- Tabel `sso_fallback_tokens` — token disimpan **ter-hash** (SHA-256), TTL 15 menit, single-use (sama pola dengan `password_reset_tokens` bawaan Laravel).
-- Rate limit `throttle:3,15` di endpoint request, dan response **selalu pesan generik yang sama** baik email terdaftar/tidak/banned — anti email-enumeration.
-- Kegagalan kirim email (API key salah, provider down) ditangkap try/catch — tidak bikin request 500, dicatat ke Log Aktivitas + log Laravel biasa.
+- A link "Can't reach SSO?" on the Landing page → `/auth/fallback` — fill in an email form → a single-use magic link is sent (if the email is registered & the mail service is configured) → click the link → logged in right away.
+- The `sso_fallback_tokens` table — the token is stored **hashed** (SHA-256), TTL 15 minutes, single-use (same pattern as Laravel's built-in `password_reset_tokens`).
+- Rate limit `throttle:3,15` on the request endpoint, and the response is **always the same generic message** whether the email is registered/not/banned — anti email-enumeration.
+- Email send failures (wrong API key, provider down) are caught by try/catch — they don't cause a 500 on the request, and are recorded in the Activity Log + the regular Laravel log.
 
 #### Fixed
-- `ActivityLog::record()` selalu pakai `auth()->id()` buat `user_id` (kolom NOT NULL) — meledak (SQL constraint violation → 500) untuk aksi yang dipicu guest seperti request login tanpa SSO. Ditambah fallback ke ID user subject kalau tidak ada yang login. Ketemu & diperbaiki saat verifikasi end-to-end lewat HTTP request langsung, bukan cuma tinker.
-- `SsoController::logout()` selalu maksa browser navigasi ke domain SSO (`sso.yado.my.id/logout`) buat destroy sesi SSO juga — kalau SSO down, browser nge-hang lama nunggu koneksi ke domain yang mati (session lokal sebenarnya sudah keburu invalid duluan). Ditambah pengecekan cepat (`ssoReachable()`, timeout 3 detik) sebelum redirect — kalau SSO tidak bisa dihubungi, langsung balik ke halaman utama tanpa nunggu.
+- `ActivityLog::record()` always used `auth()->id()` for `user_id` (a NOT NULL column) — it blew up (SQL constraint violation → 500) for actions triggered by a guest such as a login request without SSO. Added a fallback to the subject user's ID when nobody is logged in. Found & fixed during end-to-end verification through direct HTTP requests, not just tinker.
+- `SsoController::logout()` always forced the browser to navigate to the SSO domain (`sso.yado.my.id/logout`) to destroy the SSO session too — if SSO is down, the browser hangs for a long time waiting for a connection to the dead domain (the local session had actually already been invalidated). Added a quick check (`ssoReachable()`, 3-second timeout) before redirecting — if SSO can't be reached, it goes straight back to the home page without waiting.
 
-### Login Darurat via CLI
+### Emergency Login via CLI
 
-- `php artisan sso:emergency-login {identifier=super_admin}` — reuse `SsoFallbackToken` yang sama dengan magic link email, tapi diterbitkan dari CLI (butuh akses SSH ke server). Identifier boleh role (`super_admin`/`admin`/`user`) atau email/username spesifik. Selalu minta konfirmasi dan tampilkan siapa yang bakal dikasih akses sebelum menerbitkan link — kalau ada beberapa user dengan role yang sama, command kasih pilihan interaktif, bukan asal ambil satu.
+- `php artisan sso:emergency-login {identifier=super_admin}` — reuses the same `SsoFallbackToken` as the email magic link, but issued from the CLI (needs SSH access to the server). The identifier can be a role (`super_admin`/`admin`/`user`) or a specific email/username. It always asks for confirmation and shows who will be given access before issuing the link — if several users share the same role, the command offers an interactive choice instead of just picking one.
 
-### Konfigurasi Email (Resend)
-- Tabel `mail_settings` (single-row, `api_key` ter-encrypt) + tab baru "Email" di `/admin/settings` — pola sama dengan Storage/AI (dikonfigurasi UI admin, bukan `.env`).
-- `MailSettingsService` set config Resend secara runtime dari DB sebelum kirim, pola sama dengan `StorageSettingsService::disk()`.
-- Package `resend/resend-php` (native Laravel `resend` mail transport, `config/mail.php` sudah punya stub bawaan Laravel 12).
+### Email Configuration (Resend)
+- The `mail_settings` table (single-row, encrypted `api_key`) + a new "Email" tab in `/admin/settings` — same pattern as Storage/AI (configured through the admin UI, not `.env`).
+- `MailSettingsService` sets the Resend config at runtime from the DB before sending, same pattern as `StorageSettingsService::disk()`.
+- The `resend/resend-php` package (Laravel's native `resend` mail transport; `config/mail.php` already has a stub from Laravel 12).
 
-### Landing Page Dirombak
-- Tambah header (brand Malas, ganti bahasa, toggle dark/light mode, tombol Login) dan footer (tagline, copyright dinamis per tahun) — sebelumnya cuma hero + grid fitur tanpa navigasi.
-- `LanguageSwitcher` dibikin guest-safe — kalau belum login, ganti bahasa cukup di client (`i18n.changeLanguage()`) tanpa panggil endpoint yang butuh sesi otentikasi.
-
----
-
-## 2026-08-02 — URL Katalog Berbasis Judul (Slug), Multi-Bahasa Admin Selesai
-
-### URL Katalog Berbasis Judul
-
-- Kolom `series.slug` baru — auto-generated dari `title_romaji` lewat `Series::generateUniqueSlug()`. Simbol seperti `@`, `!`, koma, titik dua dibuang langsung (bukan dikonversi jadi kata — dictionary default `Str::slug()` sengaja dikosongkan), full judul dipakai apa adanya walau panjang. Regenerate otomatis kalau judul diubah; tambah suffix `-2`/`-3` kalau ada judul kembar.
-- `/catalog/{series}` (dan semua route lain yang bind model `Series`) sekarang menerima slug — `Series::resolveRouteBinding()` coba cocokkan slug dulu, fallback ke `id` supaya link/bookmark lama yang masih pakai UUID tetap jalan.
-- Semua halaman yang link ke katalog (Catalog, Dashboard, Koleksiku, Wishlist, Tiket, Profil Publik, Global Search) diupdate untuk pakai slug, bukan UUID, saat membangun URL.
-- Migration baru membackfill slug untuk semua series yang sudah ada di database.
-
-### Multi-Bahasa (id/en/ja) — Admin Selesai
-
-Seluruh backlog halaman `Admin/**` (~25 halaman: Series, Settings, Users, Announcements, Tickets, Loans, Menus, GenreFunfacts, AniList, RanobeDb, Search, Collections), halaman root (`Landing`, `Error`, `Auth/Banned`, `Maintenance`), dan komponen `Components/app/**` yang tersisa sudah diterjemahkan penuh. Lihat [`CLAUDE.md`](CLAUDE.md) bagian "Sistem Multi-Bahasa" untuk detail cakupan terkini — sisa gap yang terdokumentasi cuma flash message controller (backlog terpisah) dan `Pages/Dashboard.tsx` root yang ternyata dead code (tidak direferensikan controller manapun, sengaja tidak disentuh).
+### Landing Page Overhaul
+- Added a header (Malas brand, language switch, dark/light mode toggle, Login button) and a footer (tagline, copyright that updates per year) — before, there was only a hero + feature grid with no navigation.
+- `LanguageSwitcher` was made guest-safe — when not logged in, changing language is done on the client only (`i18n.changeLanguage()`) without calling an endpoint that needs an authenticated session.
 
 ---
 
-## 2026-08-01 — Multi-Bahasa (id/en/ja), Profil Publik untuk Guest, Puter.js AI
+## 2026-08-02 — Title-Based Catalog URLs (Slug), Admin Multi-Language Complete
 
-### Multi-Bahasa (id/en/ja)
+### Title-Based Catalog URLs
 
-Fondasi sistem multi-bahasa ditambahkan dan sebagian besar halaman user-facing sudah diterjemahkan penuh — lihat entri 2026-08-02 di atas untuk penyelesaian sisi admin.
+- New `series.slug` column — auto-generated from `title_romaji` through `Series::generateUniqueSlug()`. Symbols such as `@`, `!`, commas, and colons are dropped outright (not converted into words — the default `Str::slug()` dictionary is deliberately emptied), and the full title is used as is no matter how long. Regenerated automatically when the title changes; a `-2`/`-3` suffix is added if there are duplicate titles.
+- `/catalog/{series}` (and all other routes that bind the `Series` model) now accept a slug — `Series::resolveRouteBinding()` tries to match the slug first, falling back to `id` so old links/bookmarks still using a UUID keep working.
+- All pages that link to the catalog (Catalog, Dashboard, My Collection, Wishlist, Tickets, Public Profile, Global Search) were updated to use the slug instead of the UUID when building URLs.
+- A new migration backfills slugs for all series already in the database.
+
+### Multi-Language (id/en/ja) — Admin Complete
+
+The entire `Admin/**` page backlog (~25 pages: Series, Settings, Users, Announcements, Tickets, Loans, Menus, GenreFunfacts, AniList, RanobeDb, Search, Collections), the root pages (`Landing`, `Error`, `Auth/Banned`, `Maintenance`), and the remaining `Components/app/**` components are now fully translated. See [`CLAUDE.md`](CLAUDE.md), the "Multi-Language System" section, for details of the current coverage — the only documented remaining gaps are controller flash messages (a separate backlog) and the root `Pages/Dashboard.tsx`, which turned out to be dead code (not referenced by any controller, deliberately left untouched).
+
+---
+
+## 2026-08-01 — Multi-Language (id/en/ja), Public Profile for Guests, Puter.js AI
+
+### Multi-Language (id/en/ja)
+
+The foundation of the multi-language system was added and most user-facing pages are fully translated — see the 2026-08-02 entry above for the admin side being completed.
 
 #### Added
-- `react-i18next` + resource JSON per-namespace di `resources/js/lang/{id,en,ja}/` (`common.json`, `dashboard.json`, `user.json`, `catalog.json`, `collection.json`, `admin.json`).
-- Kolom `users.locale` (default `id`) + card "Bahasa" di halaman Settings, **plus tombol quick-switch bahasa** (`LanguageSwitcher.tsx`) langsung di sidebar footer Admin & User Layout — ganti bahasa tanpa perlu buka Settings.
-- Middleware `SetLocale` — set `App::setLocale()` server-side dari preferensi user tiap request, di-share ke frontend lewat `HandleInertiaRequests`.
-- `lang/{id,en,ja}/validation.php` + `lang/{id,en,ja}/pagination.php` — pesan validasi & paginator Laravel bawaan sekarang otomatis ikut bahasa aktif user (sebelumnya selalu Inggris karena `lang/` belum pernah di-publish).
-- `menuTranslationKey()` (`resources/js/lib/menu.ts`) — memetakan `key` menu dari database ke translation key, supaya label sidebar ikut berganti bahasa; menu custom hasil rename admin tetap fallback ke label DB apa adanya.
-- `useTypeFilterOptions()` (`resources/js/lib/typeFilters.ts`) — satu sumber terjemahan untuk Segmented Control filter tipe yang berulang di banyak halaman (aturan wajib CLAUDE.md).
+- `react-i18next` + per-namespace JSON resources in `resources/js/lang/{id,en,ja}/` (`common.json`, `dashboard.json`, `user.json`, `catalog.json`, `collection.json`, `admin.json`).
+- The `users.locale` column (default `id`) + a "Language" card on the Settings page, **plus a quick-switch language button** (`LanguageSwitcher.tsx`) right in the Admin & User Layout sidebar footer — change language without opening Settings.
+- `SetLocale` middleware — sets `App::setLocale()` server-side from the user's preference on every request, shared to the frontend through `HandleInertiaRequests`.
+- `lang/{id,en,ja}/validation.php` + `lang/{id,en,ja}/pagination.php` — Laravel's built-in validation & paginator messages now automatically follow the user's active language (before, they were always English because `lang/` had never been published).
+- `menuTranslationKey()` (`resources/js/lib/menu.ts`) — maps the menu `key` from the database to a translation key, so sidebar labels change with the language; custom menus renamed by an admin still fall back to the DB label as is.
+- `useTypeFilterOptions()` (`resources/js/lib/typeFilters.ts`) — a single translation source for the type filter Segmented Control repeated across many pages (a mandatory CLAUDE.md rule).
 
-#### Diterjemahkan penuh
-Layouts & shared (`AdminLayout`, `UserLayout`, `SidebarNav`, `CommandPalette`, `GlobalSearch`, `StatusBadge`, `Pagination`, `LanguageSwitcher`); semua halaman `User/**` (Dashboard, Catalog, Collection — termasuk `Collection/Show.tsx` yang ~1200 baris, Wishlist, Tickets, Loans, Directory, Profile); `Settings/Index.tsx` penuh; `Admin/Dashboard.tsx` dan `Admin/ActivityLog/Index.tsx`.
+#### Fully translated
+Layouts & shared (`AdminLayout`, `UserLayout`, `SidebarNav`, `CommandPalette`, `GlobalSearch`, `StatusBadge`, `Pagination`, `LanguageSwitcher`); all `User/**` pages (Dashboard, Catalog, Collection — including `Collection/Show.tsx`, ~1200 lines, Wishlist, Tickets, Loans, Directory, Profile); `Settings/Index.tsx` in full; `Admin/Dashboard.tsx` and `Admin/ActivityLog/Index.tsx`.
 
-#### Belum diterjemahkan (backlog)
-Sisa halaman `Admin/**` (Series, Users, Announcements, Tickets, Menus, dll — lihat CLAUDE.md untuk daftar lengkap per file dengan estimasi ukuran), beberapa komponen kecil `Components/app/**`, halaman root (`Landing`, `Error`, dll), serta flash message dari controller (`->with('success', '...')`) yang masih hardcode Bahasa Indonesia.
+#### Not yet translated (backlog)
+The remaining `Admin/**` pages (Series, Users, Announcements, Tickets, Menus, etc. — see CLAUDE.md for the full per-file list with size estimates), a few small `Components/app/**` components, root pages (`Landing`, `Error`, etc.), and controller flash messages (`->with('success', '...')`) still hardcoded in Indonesian.
 
-### Profil Publik Bisa Diakses Non-Login
+### Public Profile Accessible Without Login
 
-- Route `/u/{user}` (`profile.show`) dipindah keluar dari grup middleware `auth` — sekarang guest (belum login) bisa lihat profil publik seseorang tanpa perlu SSO login dulu.
-- `ProfileController::show()` dibikin null-safe untuk viewer tamu (`is_owner`/`is_following` tidak lagi crash), plus flag baru `is_guest` dikirim ke frontend.
-- Guest dapat layout publik minimal (`PublicShell` — cuma header Malas + tombol Login, tanpa sidebar), dan kartu koleksi di grid **tidak bisa diklik** untuk guest (karena `catalog.show` tetap butuh login) — cuma bisa lihat cover & judul.
+- The route `/u/{user}` (`profile.show`) was moved out of the `auth` middleware group — now guests (not logged in) can view someone's public profile without logging in through SSO first.
+- `ProfileController::show()` was made null-safe for guest viewers (`is_owner`/`is_following` no longer crash), plus a new `is_guest` flag sent to the frontend.
+- Guests get a minimal public layout (`PublicShell` — just the Malas header + Login button, no sidebar), and collection cards in the grid are **not clickable** for guests (because `catalog.show` still needs login) — they can only see the cover & title.
 
-### Provider AI Gratis via Puter.js
+### Free AI Provider via Puter.js
 
-- Fitur "Selera Genre" (funfact AI) sekarang defaultnya pakai [Puter.js](https://docs.puter.com/) — jalan langsung dari browser user, gratis, tanpa API key. Admin tetap bisa switch ke Gemini/OpenAI/Claude di `Admin/Settings` (tab AI) kalau mau.
-- Auto-generate & generate manual funfact tetap jalan otomatis di background untuk provider Puter (lihat `lib/puter.ts` + `DashboardController::regenerateFunfact()`/`saveAutoGeneratedFunfact()`).
-- Penanganan HTTP 429 (rate limit) khusus untuk provider Gemini/OpenAI/Claude — `AiRateLimitException` bikin funfact jatuh ke fallback text alih-alih gagal total, dan tidak memotong kuota generate ulang manual user.
+- The "Genre Taste" feature (AI funfact) now defaults to [Puter.js](https://docs.puter.com/) — runs directly from the user's browser, free, no API key. Admins can still switch to Gemini/OpenAI/Claude in `Admin/Settings` (AI tab) if they want.
+- Auto-generate & manual generate of funfacts still run automatically in the background for the Puter provider (see `lib/puter.ts` + `DashboardController::regenerateFunfact()`/`saveAutoGeneratedFunfact()`).
+- Dedicated HTTP 429 (rate limit) handling for the Gemini/OpenAI/Claude providers — `AiRateLimitException` makes the funfact fall back to fallback text instead of failing completely, and doesn't eat into the user's manual regenerate quota.
 
 ---
 
-## 2026-07-26 — Koleksi Pribadi: Baca Tracking, Review & Rating, Undo
+## 2026-07-26 — Personal Collection: Read Tracking, Review & Rating, Undo
 
-Iterasi lanjutan dari batch UI library — fokus ke fitur baca-tracking per volume, review pribadi, dan perbaikan UX di Koleksiku.
+A follow-up iteration on the library UI batch — focused on per-volume read tracking, personal reviews, and UX improvements in My Collection.
 
-### Added — Baca Tracking
-- Kolom `collection_volumes.read_at` — tandai volume individual sudah/belum dibaca lewat icon mata di tiap volume card/baris; volume yang sudah dibaca ditampilkan greyed out.
-- Tombol icon mata di header daftar volume (sebelah kiri judul "Volume yang Dimiliki") untuk menandai **semua** volume sudah dibaca sekaligus (`CollectionController::markAllVolumesRead()`).
-- Indikator "Terakhir dibaca: Vol. N" di halaman detail koleksi, dihitung otomatis dari volume bernomor tertinggi yang sudah ditandai dibaca.
-- Datatable Koleksiku (`/my-collection`) menampilkan progres baca per series: `N/M dibaca`, dihitung dari `read_volumes_count` (query `withCount` dengan kondisi `whereNotNull('read_at')`).
+### Added — Read Tracking
+- The `collection_volumes.read_at` column — mark individual volumes as read/unread through the eye icon on each volume card/row; read volumes are shown greyed out.
+- An eye icon button in the volume list header (to the left of the "Owned Volumes" title) to mark **all** volumes as read at once (`CollectionController::markAllVolumesRead()`).
+- A "Last read: Vol. N" indicator on the collection detail page, computed automatically from the highest-numbered volume that has been marked read.
+- The My Collection datatable (`/my-collection`) shows reading progress per series: `N/M read`, computed from `read_volumes_count` (a `withCount` query with the condition `whereNotNull('read_at')`).
 
-### Added — Mode Hapus Volume
-- Tombol "Hapus" di toolbar volume men-toggle "mode seleksi" — saat aktif, icon mata di tiap volume berubah jadi checkbox (menggantikan posisi yang sama) untuk bulk-select, lalu hapus lewat endpoint bulk delete yang sudah ada.
+### Added — Volume Delete Mode
+- The "Delete" button in the volume toolbar toggles "selection mode" — when active, the eye icon on each volume turns into a checkbox (taking the same position) for bulk-select, then deletes through the existing bulk delete endpoint.
 
-### Added — Review & Rating Pribadi
-- Kolom baru `collections.personal_rating` (smallint, -10 s/d 10) dan `collections.personal_review` (text, nullable).
-- Card "Review & Rating Pribadi" di halaman detail koleksi — slider -10 (Tidak Direkomendasikan) sampai +10 (Direkomendasikan) gaya MyAnimeList, plus textarea komentar. Endpoint `PATCH /my-collection/{collection}/review`.
-- Genre, theme, dan demographic series ditampilkan lengkap di halaman detail koleksi (sebelumnya cuma genre).
+### Added — Personal Review & Rating
+- New columns `collections.personal_rating` (smallint, -10 to 10) and `collections.personal_review` (text, nullable).
+- A "Personal Review & Rating" card on the collection detail page — a slider from -10 (Not Recommended) to +10 (Recommended) MyAnimeList-style, plus a comment textarea. Endpoint `PATCH /my-collection/{collection}/review`.
+- A series' genres, themes, and demographics are shown in full on the collection detail page (before, only genres).
 
-### Added — Undo pada Toast
-- `useFlash` sekarang bisa menampilkan tombol "Undo" di toast sukses (sonner `action`), didorong dari flash session `undo_url` + `undo_payload` (di-share lewat `HandleInertiaRequests`).
-- Toggle baca per-volume: undo memanggil endpoint toggle yang sama (reversible secara alami).
-- Tandai semua dibaca: endpoint baru `unmarkVolumesRead` — undo hanya me-revert volume yang *baru saja* diubah oleh aksi tandai-semua, bukan semua volume (supaya tidak salah revert volume yang memang sudah dibaca sebelumnya).
+### Added — Undo on Toasts
+- `useFlash` can now show an "Undo" button on success toasts (sonner `action`), driven by the session flash `undo_url` + `undo_payload` (shared through `HandleInertiaRequests`).
+- Per-volume read toggle: undo calls the same toggle endpoint (naturally reversible).
+- Mark all as read: new endpoint `unmarkVolumesRead` — undo only reverts the volumes that were *just* changed by the mark-all action, not all volumes (so it doesn't wrongly revert volumes that were already read before).
 
 ### Added — Global Search (User Side)
-- Search bar di tengah header `UserLayout` (desktop) + icon search di topbar mobile, plus shortcut ⌘K/Ctrl+K dari mana saja.
-- `GlobalSearch.tsx` (berbasis `cmdk`, komponen sama dengan Command Palette admin) — hasil pencarian gabungan navigasi statis (fuzzy-match otomatis, misal ketik "pinjaman" langsung muncul menu Pinjaman) + judul manga dari Katalog + judul dari Koleksiku sendiri.
-- Endpoint baru `GET /search` (`User\SearchController`).
+- A search bar in the center of the `UserLayout` header (desktop) + a search icon in the mobile topbar, plus a ⌘K/Ctrl+K shortcut from anywhere.
+- `GlobalSearch.tsx` (based on `cmdk`, the same component as the admin Command Palette) — search results combine static navigation (automatic fuzzy match, e.g. typing "pinjaman" immediately shows the Loans menu) + manga titles from the Catalog + titles from your own My Collection.
+- New endpoint `GET /search` (`User\SearchController`).
 
-### Changed — Koleksiku
-- Grid view Koleksiku diganti dari kartu horizontal (thumbnail kecil 80px) jadi poster card vertikal (cover full-width, aspect 2:3) dengan `grid-template-columns: repeat(auto-fill, minmax(160px,1fr))` — jumlah kolom & lebar cover otomatis menyesuaikan lebar layar, bukan breakpoint tetap.
-- Rekomendasi di dashboard user diganti dari grid jadi **Carousel** (`embla-carousel-react` + `ui/carousel.tsx`) — tiap slide nampilkan cover, judul, author, genre/tags, dan sinopsis singkat (dipotong 160 karakter).
-- Chart "Progres Volume" di dashboard user dihapus — bias karena banyak series belum punya `total_volumes` terisi (ongoing/ambigu).
+### Changed — My Collection
+- The My Collection grid view changed from horizontal cards (small 80px thumbnail) to vertical poster cards (full-width cover, 2:3 aspect) with `grid-template-columns: repeat(auto-fill, minmax(160px,1fr))` — the number of columns & cover width adjust automatically to screen width, not fixed breakpoints.
+- Recommendations on the user dashboard changed from a grid to a **Carousel** (`embla-carousel-react` + `ui/carousel.tsx`) — each slide shows the cover, title, author, genre/tags, and a short synopsis (cut at 160 characters).
+- The "Volume Progress" chart on the user dashboard was removed — it was biased because many series don't have `total_volumes` filled in (ongoing/ambiguous).
 
 ### Fixed
-- Rekomendasi genre di dashboard user kadang kosong total meski user punya banyak koleksi — root cause: sisa katalog yang belum dikoleksi user tidak semuanya punya data genre, jadi skor overlap selalu 0. Fix: fallback ke pilihan random dari series belum dikoleksi kalau scoring genre tidak menghasilkan apa-apa (dipakai juga di endpoint Surprise Me).
-- Baris tabel Koleksiku & Admin Series kadang cuma bisa diklik lewat judulnya — `onClick` navigasi dipindah dari nested di dalam `render` prop `ContextMenuTrigger` ke prop langsung di `ContextMenuTrigger` (jalur merge props yang lebih pasti di Base UI, bukan merge dua lapis).
+- Genre recommendations on the user dashboard were sometimes completely empty even though the user had many collections — root cause: the rest of the catalog not yet collected by the user didn't all have genre data, so the overlap score was always 0. Fix: fall back to a random pick from series not yet collected if genre scoring yields nothing (also used in the Surprise Me endpoint).
+- Rows of the My Collection & Admin Series tables could sometimes only be clicked through their title — the navigation `onClick` was moved from nested inside the `render` prop of `ContextMenuTrigger` to a prop directly on `ContextMenuTrigger` (a more reliable props-merge path in Base UI, instead of a two-layer merge).
 
 ---
 
-## 2026-07-25 (lanjutan) — Library UI Baru: Empty, Hover Card, Context Menu, Command Palette, Chart
+## 2026-07-25 (continued) — New UI Libraries: Empty, Hover Card, Context Menu, Command Palette, Chart
 
-Batch integrasi beberapa komponen shadcn/Base UI yang sebelumnya sudah terpasang tapi belum dipakai, plus fitur baru di dashboard.
+A batch integrating several shadcn/Base UI components that were already installed but not yet used, plus new features on the dashboard.
 
 ### Added
-- **`Empty` component** (`ui/empty.tsx`) — dipakai di state kosong Koleksiku dan Pinjaman, menggantikan `EmptyState` lama di kedua halaman itu.
-- **Selector jumlah data per halaman** (5/10/25/50/100) di semua datatable server-paginated (Admin Series/Users/Collections/Tickets/Loans/Announcements, User Tickets/Loans) — param `per_page` di-whitelist lewat helper `Controller::perPage()`, `Pagination.tsx` di-extend dengan selector opsional yang baca `data.per_page` dari paginator langsung.
-- **Avatar kolektor** di halaman detail Katalog — nampilin stack avatar (tanpa nama, privasi) + jumlah total user yang mengoleksi series tersebut.
-- **Hover Card preview** — hover judul series di Admin Series & Koleksiku (table view) nampilin cover, tipe, status, skor tanpa perlu klik.
-- **Context menu (klik kanan)** — shortcut Lihat/Edit/Hapus di baris Admin Series & Koleksiku, melengkapi dropdown menu yang sudah ada.
-- **Command Palette admin** (⌘K/Ctrl+K, `CommandPalette.tsx`) — navigasi cepat ke semua halaman admin + search langsung ke Series/Users/Tiket lewat endpoint `GET /admin/command-search`. Trigger button juga ada permanen di sidebar admin.
-- **Dashboard charts** (`recharts` + `ui/chart.tsx`) — Admin: Series per Status, Koleksi per Tipe, Status Pinjaman (donut). User: Koleksi per Status.
-- **Rekomendasi genre + Surprise Me** — dashboard user nampilin rekomendasi series berdasarkan overlap genre dengan koleksi user (dihitung di PHP, bukan raw JSON query DB, supaya portable SQLite/MySQL); tombol "Surprise Me" pilih satu series random (genre-weighted) dengan dialog reveal.
+- **`Empty` component** (`ui/empty.tsx`) — used in the empty states of My Collection and Loans, replacing the old `EmptyState` on both pages.
+- **Rows-per-page selector** (5/10/25/50/100) on all server-paginated datatables (Admin Series/Users/Collections/Tickets/Loans/Announcements, User Tickets/Loans) — the `per_page` param is whitelisted through the `Controller::perPage()` helper, and `Pagination.tsx` was extended with an optional selector that reads `data.per_page` straight from the paginator.
+- **Collector avatars** on the Catalog detail page — shows an avatar stack (no names, for privacy) + the total number of users who collect that series.
+- **Hover Card preview** — hovering a series title in Admin Series & My Collection (table view) shows the cover, type, status, and score without a click.
+- **Context menu (right-click)** — View/Edit/Delete shortcuts on rows in Admin Series & My Collection, complementing the existing dropdown menu.
+- **Admin Command Palette** (⌘K/Ctrl+K, `CommandPalette.tsx`) — quick navigation to all admin pages + direct search of Series/Users/Tickets through the `GET /admin/command-search` endpoint. A trigger button is also permanently in the admin sidebar.
+- **Dashboard charts** (`recharts` + `ui/chart.tsx`) — Admin: Series per Status, Collections per Type, Loan Status (donut). User: Collections per Status.
+- **Genre recommendations + Surprise Me** — the user dashboard shows series recommendations based on genre overlap with the user's collection (computed in PHP, not a raw DB JSON query, to stay portable across SQLite/MySQL); a "Surprise Me" button picks one random series (genre-weighted) with a reveal dialog.
 
 ### Skipped
-- Komponen `Attachment` untuk upload gambar galeri media admin — spec yang di-paste user hilang saat context compaction sesi sebelumnya, ditunda sampai di-paste ulang.
+- The `Attachment` component for uploading images to the admin media gallery — the spec the user pasted was lost during context compaction of the previous session, postponed until it is pasted again.
 
 ---
 
-## 2026-07-25 — UX Overhaul: Katalog, Koleksiku, Admin Tools, Konten 18+
+## 2026-07-25 — UX Overhaul: Catalog, My Collection, Admin Tools, 18+ Content
 
-Batch besar perbaikan & fitur di sisi user dan admin, plus infrastruktur queue worker untuk deployment.
+A big batch of fixes & features on the user and admin sides, plus queue worker infrastructure for deployment.
 
 ### Fixed
-- Pagination Katalog & Admin Series balik ke halaman 1 sendiri — `useEffect` debounce search yang tidak seharusnya jalan di setiap mount (termasuk saat pindah halaman), sekarang di-skip pada render pertama.
+- Catalog & Admin Series pagination kept jumping back to page 1 on its own — the search debounce `useEffect` should not have run on every mount (including when changing pages), and is now skipped on the first render.
 
 ### Added — User Side
-- Modal "Tambah Series" di Koleksiku diperbesar, grid pemilihan lebih lega.
-- Toggle tampilan Grid/Table + sort (nama, tanggal ditambahkan, jumlah volume) di Koleksiku, tersimpan per-device via `localStorage`.
-- Toggle Grid/Table untuk daftar volume yang dimiliki di halaman detail koleksi.
-- Filter "sudah/belum di koleksi" di Katalog.
-- Checklist volume di koleksi kini bisa diklik di area manapun dalam kotak cover, tidak harus tepat di checkbox.
-- Tombol refresh cepat di sebelah search — Katalog, Koleksiku, Admin Series.
-- Filter status series (publishing/selesai/hiatus/dll) di Koleksiku.
-- Genre series ditampilkan di kartu Koleksiku.
-- Kondisi koleksi opsional (mint/bagus/cukup/buruk), bisa diubah dari halaman detail koleksi.
-- Widget "tiket terakhir" di dashboard user.
-- Galeri media tambahan (screenshot/artwork) di halaman detail Katalog; badge jumlah volume di kartu grid katalog dihapus (dianggap tidak informatif).
-- Avatar user (dengan fallback inisial) ditampilkan konsisten di sidebar.
+- The "Add Series" modal in My Collection was enlarged, with a roomier selection grid.
+- Grid/Table view toggle + sort (name, date added, volume count) in My Collection, stored per device via `localStorage`.
+- Grid/Table toggle for the owned volume list on the collection detail page.
+- An "in collection / not in collection" filter in the Catalog.
+- The volume checklist in a collection can now be clicked anywhere inside the cover box, not exactly on the checkbox.
+- A quick refresh button next to search — Catalog, My Collection, Admin Series.
+- Series status filter (publishing/finished/hiatus/etc.) in My Collection.
+- Series genres are shown on the My Collection card.
+- Optional collection condition (mint/good/fair/poor), editable from the collection detail page.
+- A "latest tickets" widget on the user dashboard.
+- Extra media gallery (screenshots/artwork) on the Catalog detail page; the volume count badge on catalog grid cards was removed (deemed uninformative).
+- User avatars (with initials fallback) are shown consistently in the sidebar.
 
 ### Added — Admin Side
-- Halaman Koleksi admin direstruktur: daftar dikelompokkan per user (dengan drill-down), bukan tabel flat semua koleksi.
-- Import AniList tidak lagi pindah halaman setelah import — tetap di halaman cari, dengan tombol "lihat di katalog" untuk series yang sudah diimpor.
-- Sidebar admin & user direstruktur jadi kategori/sub-kategori collapsible (mis. grup "AniList", grup "Lainnya").
-- Halaman Storage Settings + Database Backup digabung jadi satu halaman `/admin/settings` bertab.
-- Filter "sembunyikan konten 18+" saat mencari di AniList, plus badge 18+ pada hasil.
-- Pengaturan global "blur konten 18+" (tab Konten di halaman Pengaturan) — cover series 18+ otomatis di-blur di seluruh halaman user, klik untuk membuka sementara (gaya Reddit/Instagram).
-- Log aktivitas admin — mencatat aksi sensitif (hapus/bulk-delete series & volume, ban/unban/ganti role user, import database, ubah pengaturan storage/konten) dengan halaman viewer baru.
-- Upload galeri media tambahan per series dari halaman Edit Series.
-- Migrasi file storage otomatis (Local ↔ S3) saat driver/bucket/endpoint diganti — berjalan di background lewat queue job, status ditampilkan di halaman Pengaturan.
+- The admin Collections page was restructured: the list is grouped per user (with drill-down), instead of a flat table of all collections.
+- AniList import no longer navigates away after import — it stays on the search page, with a "view in catalog" button for series that have been imported.
+- The admin & user sidebars were restructured into collapsible categories/sub-categories (e.g. the "AniList" group, the "Others" group).
+- The Storage Settings + Database Backup pages were merged into a single tabbed `/admin/settings` page.
+- A "hide 18+ content" filter when searching AniList, plus an 18+ badge on results.
+- A global "blur 18+ content" setting (Content tab on the Settings page) — 18+ series covers are blurred automatically across all user pages, click to reveal temporarily (Reddit/Instagram style).
+- Admin activity log — records sensitive actions (delete/bulk-delete series & volumes, ban/unban/change user role, database import, change storage/content settings) with a new viewer page.
+- Upload of extra media gallery per series from the Edit Series page.
+- Automatic file storage migration (Local ↔ S3) when the driver/bucket/endpoint is changed — runs in the background through a queue job, with status shown on the Settings page.
 
-### Changed — Infrastruktur Deployment
-- `deploy.sh` sekarang install & konfigurasi **Supervisor** untuk queue worker (`malas-worker`) — wajib supaya job antrian seperti migrasi storage benar-benar berjalan di production.
-- `update.sh` menjalankan `php artisan queue:restart` setelah update kode, supaya worker yang sedang berjalan pakai kode terbaru.
-- `docs/DEPLOYMENT.md` diperbarui: prasyarat Supervisor, langkah manual setup queue worker, troubleshooting job antrian tidak jalan.
+### Changed — Deployment Infrastructure
+- `deploy.sh` now installs & configures **Supervisor** for the queue worker (`malas-worker`) — required so queue jobs such as storage migration actually run in production.
+- `update.sh` runs `php artisan queue:restart` after a code update, so the running worker uses the latest code.
+- `docs/DEPLOYMENT.md` updated: Supervisor prerequisite, manual queue worker setup steps, troubleshooting for queue jobs not running.
 
 ---
 
 ## 2026-07-23 — Admin Series Bulk Delete
 
 ### Added
-- Checkbox multi-select di `Admin/Series/Index.tsx` — pilih banyak series sekaligus untuk dihapus dalam satu aksi, tidak perlu satu-satu.
-- `SeriesController::bulkDestroy()` + route `DELETE /admin/series/bulk` (didaftarkan sebelum resource route agar tidak bentrok dengan wildcard `{series}`).
-- Toolbar "Hapus (N)" muncul di `PageHeader` saat ada series terpilih, dengan dialog konfirmasi terpisah dari delete single-item.
+- Multi-select checkboxes in `Admin/Series/Index.tsx` — select many series at once to delete in one action, no need to do it one by one.
+- `SeriesController::bulkDestroy()` + the route `DELETE /admin/series/bulk` (registered before the resource route so it doesn't clash with the `{series}` wildcard).
+- A "Delete (N)" toolbar appears in `PageHeader` when series are selected, with a confirmation dialog separate from single-item delete.
 
 ---
 
 ## 2026-07-22 — Storage Settings, Database Backup, Ticket System, AniList Fixes
 
 ### Added
-- **Storage settings via UI admin** (`/admin/settings/storage`) — driver `local` atau `s3` (kompatibel AWS S3 maupun S3-compatible seperti Cloudflare R2), disimpan di tabel `storage_settings` dengan `secret_access_key` ter-encrypt. Konfigurasi tidak lagi lewat `.env`.
-- **`StorageSettingsService`** — satu pintu untuk semua operasi file (disk, url, store, delete). Semua kode yang sebelumnya akses `Storage::` facade langsung dimigrasi ke service ini.
-- **Database backup & import** (`/admin/settings/database`, super_admin only) — download dump SQL (exclude tabel sensitif: `users`, `sessions`, `jobs`, dll), import dengan `DELETE FROM` + `INSERT` per tabel dibungkus `DB::transaction()` supaya atomic dan bisa rollback kalau gagal di tengah.
-- **Sistem tiket** — user bisa buat tiket request (misal minta judul baru masuk katalog) dari `User/Tickets/Create.tsx` (bisa pre-filled dari halaman katalog), admin merespon dari `Admin/Tickets/Show.tsx`. Status: `open`, `in_progress`, `resolved`, `closed`.
-- Note "buat tiket request" di halaman Catalog dan Collection saat hasil pencarian kosong / koleksi belum ada di katalog.
-- Volume range input syntax — `CollectionController::storeVolumes()` menerima format campuran seperti `1,2,3,5-9,11,12,15-18`, di-expand jadi list volume individual (auto-swap kalau range terbalik, dedupe, limit 100 per batch).
+- **Storage settings via the admin UI** (`/admin/settings/storage`) — driver `local` or `s3` (compatible with AWS S3 and S3-compatible services like Cloudflare R2), stored in the `storage_settings` table with an encrypted `secret_access_key`. Configuration no longer goes through `.env`.
+- **`StorageSettingsService`** — a single entry point for all file operations (disk, url, store, delete). All code that previously accessed the `Storage::` facade directly was migrated to this service.
+- **Database backup & import** (`/admin/settings/database`, super_admin only) — download an SQL dump (excluding sensitive tables: `users`, `sessions`, `jobs`, etc.), import with `DELETE FROM` + `INSERT` per table wrapped in `DB::transaction()` so it is atomic and can roll back if it fails midway.
+- **Ticket system** — users can create request tickets (e.g. asking for a new title to be added to the catalog) from `User/Tickets/Create.tsx` (can be pre-filled from the catalog page), and admins respond from `Admin/Tickets/Show.tsx`. Statuses: `open`, `in_progress`, `resolved`, `closed`.
+- A "create a request ticket" note on the Catalog and Collection pages when search results are empty / the collection isn't in the catalog yet.
+- Volume range input syntax — `CollectionController::storeVolumes()` accepts mixed formats like `1,2,3,5-9,11,12,15-18`, expanded into a list of individual volumes (auto-swap if the range is reversed, dedupe, limit 100 per batch).
 
 ### Fixed
-- Popover "Sync AniList" / search card yang posisinya aneh (nempel di bawah/kanan trigger, bukan di tengah) — diganti absolute overlay `inset-0` di dalam wrapper `relative` per-card, karena anchor engine Base UI Popover tidak didesain untuk centering penuh.
-- Cover preview di Edit Series tidak muncul setelah upload baru — React reuse DOM node `<img>` yang sama antar render sehingga `style.display = 'none'` dari `onError` lama nyangkut. Fix: tambah `key={displayCover}` supaya React remount elemen saat source berubah.
+- The "Sync AniList" popover / search card whose position was off (stuck below/right of the trigger, not centered) — replaced with an absolute `inset-0` overlay inside a per-card `relative` wrapper, because Base UI Popover's anchor engine isn't designed for full centering.
+- The cover preview in Edit Series didn't appear after a new upload — React reused the same `<img>` DOM node across renders, so the `style.display = 'none'` from the old `onError` got stuck. Fix: add `key={displayCover}` so React remounts the element when the source changes.
 
 ---
 
 ## 2026-07-21 — SSO Integration
 
 ### Added
-- `SsoController` — autentikasi PKCE-based OAuth2 ke Yado. Semua user (termasuk admin) login lewat SSO, tidak ada form register/login lokal lagi.
-- Kolom baru di `users`: `sso_id` (unique), `username`, `avatar`. `password` diubah jadi nullable.
-- Halaman `Settings/Index.tsx` — profil user ditampilkan read-only (data profil dikelola di sisi SSO).
+- `SsoController` — PKCE-based OAuth2 authentication to Yado. All users (including admins) log in through SSO; there are no local register/login forms anymore.
+- New columns on `users`: `sso_id` (unique), `username`, `avatar`. `password` was made nullable.
+- `Settings/Index.tsx` page — the user profile is shown read-only (profile data is managed on the SSO side).
 
 ---
 
-## Sebelumnya — AniList Migration & Series Management
+## Earlier — AniList Migration & Series Management
 
 ### Changed
-- **Migrasi total dari Jikan (MyAnimeList) ke AniList GraphQL** — `JikanService` dihapus, diganti `AniListService`. Kolom baru di `series`: `anilist_id`, `genres`, `authors`, `themes`, `demographics` (semua json).
-- Search & import series dari AniList (`Admin/AniList/Index.tsx`) dan sync ulang metadata ke series existing (Popover "Sync AniList" di Edit Series).
+- **Full migration from Jikan (MyAnimeList) to the AniList GraphQL API** — `JikanService` removed, replaced by `AniListService`. New columns on `series`: `anilist_id`, `genres`, `authors`, `themes`, `demographics` (all json).
+- Search & import of series from AniList (`Admin/AniList/Index.tsx`) and re-sync of metadata into existing series (the "Sync AniList" Popover in Edit Series).
 
 ### Added
-- Volume tracking per-user di koleksi pribadi, bulk delete volume dari halaman detail koleksi.
-- Sistem peminjaman (loan) volume dari koleksi pribadi.
+- Per-user volume tracking in the personal collection, bulk delete of volumes from the collection detail page.
+- A volume loan system from the personal collection.
 
 ---
 
-## Sebelumnya — Fondasi (Phase 0–10)
+## Earlier — Foundation (Phase 0–10)
 
-Setup awal Laravel 12 + Inertia v2 + React 19, sistem auth & role (Spatie Permission), menu management berbasis database, CRUD series/volume admin, katalog & koleksi user, announcements, user & menu management. Detail lengkap ada di [`docs/PHASES.md`](docs/PHASES.md). QA pass pertama: 2026-07-03.
+Initial setup of Laravel 12 + Inertia v2 + React 19, auth & role system (Spatie Permission), database-based menu management, admin series/volume CRUD, user catalog & collection, announcements, user & menu management. Full details are in [`docs/PHASES.md`](docs/PHASES.md). First QA pass: 2026-07-03.

@@ -15,7 +15,7 @@ class UpdateVolumeRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'volume_number.unique' => 'Nomor volume ini sudah ada di series ini.',
+            'volume_number.unique' => 'This volume number already exists in this series.',
         ];
     }
 

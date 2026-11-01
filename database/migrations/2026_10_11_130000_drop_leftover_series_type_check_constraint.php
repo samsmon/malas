@@ -6,11 +6,11 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Migrasi 2026_09_20_012144 mengubah kolom `type` dari enum() jadi string, tapi di Postgres
-     * CHECK constraint bawaan enum (`series_type_check`: manga, manhwa, manhua, novel, one_shot,
-     * doujinshi) TIDAK ikut hilang. Akibatnya tipe "other" ditolak database: simpan series bertipe
-     * Lainnya error, impor manhwa/manhua dari AniList gagal, dan filter "Lainnya" selalu kosong.
-     * Nilai yang valid tetap dijaga Rule::in di Store/UpdateSeriesRequest.
+     * Migration 2026_09_20_012144 changed the `type` column from enum() to string, but on Postgres the
+     * enum's built-in CHECK constraint (`series_type_check`: manga, manhwa, manhua, novel, one_shot,
+     * doujinshi) did NOT go away. As a result the "other" type was rejected by the database: saving a series of type
+     * Other failed, importing manhwa/manhua from AniList failed, and the "Other" filter was always empty.
+     * Valid values are still guarded by Rule::in in Store/UpdateSeriesRequest.
      */
     public function up(): void
     {
@@ -19,7 +19,7 @@ return new class extends Migration
         }
     }
 
-    /** Sengaja kosong: constraint itu sisa enum lama yang salah, tidak dipasang ulang. */
+    /** Deliberately empty: that constraint is a wrong leftover from the old enum and is not reinstated. */
     public function down(): void
     {
     }

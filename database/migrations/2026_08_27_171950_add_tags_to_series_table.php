@@ -12,12 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('series', function (Blueprint $table) {
-            // `tags`: array datar nama tag AniList (mis. "Isekai", "Anti-Hero") — dipakai buat
-            // filtering (whereJsonContains), pola sama persis dengan kolom `genres` yang udah ada.
+            // `tags`: flat array of AniList tag names (e.g. "Isekai", "Anti-Hero"), used for
+            // filtering (whereJsonContains), exactly the same pattern as the existing `genres` column.
             $table->json('tags')->nullable()->after('demographics');
-            // `tag_categories`: map nama tag -> kategori AniList (mis. "Isekai" -> "Theme-Reincarnation")
-            // — cuma dipakai buat ngelompokin tag jadi tree di UI filter, TIDAK pernah di-query
-            // langsung di WHERE clause (jadi nggak perlu driver-aware kayak `tags`/`genres`).
+            // `tag_categories`: map of tag name -> AniList category (e.g. "Isekai" -> "Theme-Reincarnation")
+            // - only used to group tags into a tree in the filter UI, NEVER queried
+            // directly in a WHERE clause (so it does not need to be driver-aware like `tags`/`genres`).
             $table->json('tag_categories')->nullable()->after('tags');
         });
     }

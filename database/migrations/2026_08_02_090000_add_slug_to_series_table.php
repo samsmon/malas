@@ -13,8 +13,8 @@ return new class extends Migration
             $table->string('slug')->nullable()->after('title_romaji');
         });
 
-        // Backfill slug untuk series yang sudah ada — trigger event model
-        // (Series::booted) supaya logic uniqueness-nya konsisten dengan create/update baru.
+        // Backfill slugs for existing series. Triggers the model event
+        // (Series::booted) so the uniqueness logic stays consistent with new creates/updates.
         Series::withTrashed()->whereNull('slug')->each(function (Series $series) {
             $series->slug = Series::generateUniqueSlug($series->title_romaji, $series->id);
             $series->saveQuietly();

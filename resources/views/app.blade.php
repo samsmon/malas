@@ -4,11 +4,11 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {{-- Cegah FOUC dark mode: apply class "dark" sinkron sebelum first paint, sebelum CSS
-             sempat kepasang. Kelas dark di useTheme.ts baru di-apply di useEffect (setelah paint
-             pertama), jadi tanpa ini user dark-mode bakal kelihatan sekilas layar putih tiap full
-             page load. Baca localStorage dulu (sumber kebenaran per useTheme.ts), fallback ke tema
-             user dari server buat login pertama kali di device baru sebelum localStorage keisi. --}}
+        {{-- Prevent dark mode FOUC: apply the "dark" class synchronously before first paint, before the CSS
+             is attached. The dark class in useTheme.ts is only applied in useEffect (after the first
+             paint), so without this dark-mode users would see a white flash on every full
+             page load. Read localStorage first (source of truth per useTheme.ts), fall back to the user's
+             theme from the server for the first login on a new device before localStorage is filled. --}}
         <script>
             (function () {
                 try {

@@ -28,8 +28,8 @@ interface GenreMultiSelectProps {
     emptyText: string;
     clearLabel: string;
     selectedLabel: (count: number) => string;
-    /** Tag AniList (dari `tag_categories`), dikelompokkan per kategori — tampil sebagai tree
-     *  collapsible di bawah section genre, di dalam popover yang sama (bukan tombol terpisah). */
+    /** AniList tags (from `tag_categories`), grouped by category — shown as a collapsible
+     *  tree below the genre section, inside the same popover (not a separate button). */
     tagGroups?: TagCategoryGroup[];
     tagValue?: string[];
     onTagChange?: (next: string[]) => void;
@@ -37,13 +37,14 @@ interface GenreMultiSelectProps {
 }
 
 /**
- * Filter genre yang bisa diketik (fuzzy match lewat cmdk) + pilih lebih dari satu genre sekaligus.
- * Dipakai buat filter Katalog user — genre terpilih ditampilkan sebagai badge di bawah trigger
- * supaya kelihatan tanpa harus buka popover lagi.
+ * Typeable genre filter (fuzzy match via cmdk) + select several genres at once.
+ * Used for the user Catalog filter — selected genres are shown as badges below the trigger
+ * so they stay visible without reopening the popover.
  *
- * Section TAG (opsional, `tagGroups`) numpang di popover yang sama biar nggak nambah tombol baru
- * di filter bar — kategori collapsible, tapi tetap ke-render penuh di DOM (cuma di-CSS-hide pas
- * ciut) supaya search box di atas tetap bisa nyaring tag di kategori yang lagi ciut sekalipun.
+ * The TAG section (optional, `tagGroups`) lives in the same popover so the filter bar
+ * doesn't get another button — categories are collapsible, but still fully rendered in the DOM
+ * (only hidden via CSS when collapsed) so the search box above can still filter tags
+ * inside collapsed categories.
  */
 export function GenreMultiSelect({
     value, onChange, groups, placeholder, searchPlaceholder, emptyText, clearLabel, selectedLabel,

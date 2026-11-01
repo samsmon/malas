@@ -24,9 +24,9 @@ function getInitialTheme(userTheme?: Theme): Theme {
 }
 
 /**
- * Tema tersimpan per-user (users.theme) sama pola dengan locale — sync ke server kalau login,
- * localStorage-only kalau guest (Landing/PublicShell). 'system' ikutin prefers-color-scheme OS
- * dan live-update kalau preferensi OS berubah selagi app kebuka.
+ * Theme is stored per user (users.theme), same pattern as locale — synced to the server when logged in,
+ * localStorage-only for guests (Landing/PublicShell). 'system' follows the OS prefers-color-scheme
+ * and live-updates if the OS preference changes while the app is open.
  */
 export function useTheme() {
     const { auth } = usePage().props;
@@ -34,14 +34,14 @@ export function useTheme() {
     const [theme, setThemeState] = useState<Theme>(() => getInitialTheme(userTheme));
     const lastSyncedProp = useRef(userTheme);
 
-    // Apply + persist tiap kali `theme` berubah (baik dari user klik atau sync dari server).
+    // Apply + persist whenever `theme` changes (whether from a user click or a sync from the server).
     useEffect(() => {
         applyTheme(theme);
         localStorage.setItem('theme', theme);
     }, [theme]);
 
-    // Kalau shared prop dari server berubah (mis. diganti dari device/tab lain, ke-refresh pas
-    // navigasi Inertia) dan beda dari state lokal, ikutin nilai server.
+    // If the shared prop from the server changes (e.g. changed from another device/tab, refreshed on
+    // Inertia navigation) and differs from local state, follow the server value.
     useEffect(() => {
         if (userTheme && userTheme !== lastSyncedProp.current) {
             lastSyncedProp.current = userTheme;
@@ -49,7 +49,7 @@ export function useTheme() {
         }
     }, [userTheme]);
 
-    // Live-update kalau lagi mode 'system' dan preferensi OS berubah selagi app kebuka.
+    // Live-update when in 'system' mode and the OS preference changes while the app is open.
     useEffect(() => {
         if (theme !== 'system') return;
         const mql = window.matchMedia('(prefers-color-scheme: dark)');

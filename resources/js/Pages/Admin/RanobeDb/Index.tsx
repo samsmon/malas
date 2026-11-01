@@ -165,7 +165,7 @@ export default function RanobeDbIndex({ results, pagination, filters, error }: P
                                     </div>
                                 </button>
 
-                                {/* Overlay detail — muncul tepat di atas card */}
+                                {/* Detail overlay — appears right on top of the card */}
                                 {preview?.ranobedb_id === item.ranobedb_id && (
                                     <div className="absolute inset-0 z-20 flex flex-col justify-between overflow-hidden rounded-lg border border-border bg-card shadow-xl">
                                         <div className="flex items-start justify-between gap-2 border-b p-3">

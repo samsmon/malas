@@ -33,8 +33,8 @@ export function ThemeSwitcher({
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
 
-    // Icon trigger (mode collapsed) ikutin tema yang KETERAPKAN (light/dark), bukan pilihan
-    // 'system' mentah — biar ikonnya selalu representatif walau lagi ikut preferensi OS.
+    // The trigger icon (collapsed mode) follows the APPLIED theme (light/dark), not the raw
+    // 'system' choice — so the icon is always representative even when following the OS preference.
     const TriggerIcon = collapsed ? THEME_ICONS[resolvedTheme] : THEME_ICONS[theme];
 
     function handleSelect(value: Theme) {

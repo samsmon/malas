@@ -182,7 +182,7 @@ export default function AdminLayout({ children, header }: AdminLayoutProps) {
                 <SidebarContent menus={menus} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
             </aside>
 
-            {/* Mobile menu — popup bottom sheet, dipicu dari FAB, bukan panel slide-in dari sisi */}
+            {/* Mobile menu — popup bottom sheet, triggered from the FAB, not a slide-in side panel */}
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                 <SheetContent side="bottom" className="flex h-[85vh] flex-col gap-0 p-0 lg:hidden">
                     <SheetHeader className="sr-only">
